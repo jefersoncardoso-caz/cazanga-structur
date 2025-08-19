@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { OrgChart, OrgLevel } from '@/components/ui/org-chart';
 import { OrgChartNode } from '@/components/ui/org-chart-node';
+import EmployeeModal from '@/components/modals/EmployeeModal';
 
 interface TeamOrgChartProps {
   team: string;
@@ -14,6 +15,25 @@ interface TeamEmployee {
 }
 
 const TeamOrgChart: React.FC<TeamOrgChartProps> = ({ team }) => {
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleEmployeeClick = (employee: any) => {
+    setSelectedEmployee({
+      ...employee,
+      email: `${employee.title.toLowerCase().replace(/\s+/g, '.')}@cazanga.com`,
+      phone: '+55 (11) 9999-9999',
+      location: 'São Paulo, SP',
+      description: `Responsável por ${employee.position.toLowerCase()} na equipe de ${team}`,
+      responsibilities: [
+        'Gerenciar atividades diárias da equipe',
+        'Implementar processos e procedimentos',
+        'Colaborar com outros departamentos',
+        'Realizar relatórios e análises'
+      ]
+    });
+    setIsModalOpen(true);
+  };
   const getTeamData = (teamName: string) => {
     switch (teamName) {
       case 'DHO':
@@ -126,7 +146,7 @@ const TeamOrgChart: React.FC<TeamOrgChartProps> = ({ team }) => {
         </h1>
       </div>
 
-      {/* Descriptions Panel */}
+      {/* Main Content */}
       <div className="flex">
         <div className="flex-1 px-4">
           {/* Manager */}
@@ -166,6 +186,7 @@ const TeamOrgChart: React.FC<TeamOrgChartProps> = ({ team }) => {
                     title={employee.title}
                     count={employee.count}
                     variant="team"
+                    onClick={() => handleEmployeeClick(employee)}
                   />
                   {/* Sub-employees */}
                   {teamData.employees
@@ -177,6 +198,7 @@ const TeamOrgChart: React.FC<TeamOrgChartProps> = ({ team }) => {
                           title={subEmployee.title}
                           count={subEmployee.count}
                           variant="default"
+                          onClick={() => handleEmployeeClick(subEmployee)}
                         />
                       </div>
                     ))
@@ -193,7 +215,10 @@ const TeamOrgChart: React.FC<TeamOrgChartProps> = ({ team }) => {
           <div className="space-y-2">
             {teamData.descriptions.map((desc, index) => (
               <div key={index} className="border-b border-white/20 pb-2">
-                <button className="text-left text-sm hover:text-secondary-light transition-colors underline w-full">
+                <button 
+                  className="text-left text-sm hover:text-secondary-light transition-colors underline w-full"
+                  onClick={() => handleEmployeeClick({ title: desc, position: desc })}
+                >
                   {desc}
                 </button>
               </div>
@@ -201,6 +226,12 @@ const TeamOrgChart: React.FC<TeamOrgChartProps> = ({ team }) => {
           </div>
         </div>
       </div>
+
+      <EmployeeModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        employee={selectedEmployee}
+      />
     </div>
   );
 };

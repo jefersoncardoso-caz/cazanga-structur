@@ -62,7 +62,7 @@ const initialState: AppState = {
     companyName: 'Cazanga',
     primaryColor: '#1f4e78',
     secondaryColor: '#548235',
-    introText: 'Bem-vindo ao sistema de organogramas da Cazanga',
+    introText: 'Explore nossa estrutura organizacional de forma interativa e detalhada.',
     carouselImages: []
   },
   employees: [],

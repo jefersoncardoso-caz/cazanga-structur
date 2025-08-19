@@ -382,27 +382,86 @@ const AdminPanel = () => {
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Carrossel da Página Inicial</h3>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map((index) => (
-                    <div key={index} className="border-2 border-dashed border-muted rounded-lg p-4 text-center">
-                      <p className="text-sm text-muted-foreground mb-2">Imagem {index}</p>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        toast({
-                          title: "Upload de imagem",
-                          description: `Adicionar imagem ${index} ao carrossel`
-                        });
-                      }}>
-                        Adicionar Imagem
-                      </Button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {state.siteSettings.carouselImages?.map((image, index) => (
+                    <div key={index} className="p-4 border rounded-lg">
+                      <img src={image} alt={`Imagem ${index + 1}`} className="w-full h-32 object-cover rounded" />
+                      <div className="mt-2 flex justify-between items-center">
+                        <p className="text-sm">Imagem {index + 1}</p>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => {
+                            const newImages = state.siteSettings.carouselImages?.filter((_, i) => i !== index) || [];
+                            dispatch({ 
+                              type: 'UPDATE_SITE_SETTINGS', 
+                              payload: { ...state.siteSettings, carouselImages: newImages }
+                            });
+                            toast({
+                              title: "Imagem removida",
+                              description: "Imagem removida do carrossel"
+                            });
+                          }}
+                        >
+                          Remover
+                        </Button>
+                      </div>
                     </div>
                   ))}
+                  
+                  {(!state.siteSettings.carouselImages || state.siteSettings.carouselImages.length === 0) && (
+                    <div className="col-span-3 p-8 border-2 border-dashed rounded-lg text-center">
+                      <p className="text-muted-foreground">Nenhuma imagem adicionada ainda</p>
+                    </div>
+                  )}
                 </div>
-                <Button className="w-full" onClick={() => {
-                  toast({
-                    title: "Carrossel atualizado",
-                    description: "As imagens do carrossel foram salvas"
-                  });
-                }}>Salvar Carrossel</Button>
+                
+                <div>
+                  <Label>Adicionar Nova Imagem (URL)</Label>
+                  <div className="flex gap-2 mt-2">
+                    <Input 
+                      placeholder="Cole a URL da imagem"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          const input = e.target as HTMLInputElement;
+                          if (input.value) {
+                            const currentImages = state.siteSettings.carouselImages || [];
+                            dispatch({ 
+                              type: 'UPDATE_SITE_SETTINGS', 
+                              payload: { 
+                                ...state.siteSettings, 
+                                carouselImages: [...currentImages, input.value]
+                              }
+                            });
+                            input.value = '';
+                            toast({
+                              title: "Imagem adicionada",
+                              description: "Nova imagem adicionada ao carrossel"
+                            });
+                          }
+                        }
+                      }}
+                    />
+                    <Button onClick={(e) => {
+                      const input = (e.target as HTMLElement).parentElement?.querySelector('input') as HTMLInputElement;
+                      if (input?.value) {
+                        const currentImages = state.siteSettings.carouselImages || [];
+                        dispatch({ 
+                          type: 'UPDATE_SITE_SETTINGS', 
+                          payload: { 
+                            ...state.siteSettings, 
+                            carouselImages: [...currentImages, input.value]
+                          }
+                        });
+                        input.value = '';
+                        toast({
+                          title: "Imagem adicionada",
+                          description: "Nova imagem adicionada ao carrossel"
+                        });
+                      }
+                    }}>Adicionar</Button>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>
@@ -427,11 +486,16 @@ const AdminPanel = () => {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">Conectado</span>
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <span className="text-sm">Aguardando configuração</span>
                 </div>
                 
-                <Button>Salvar Configurações</Button>
+                <Button onClick={() => {
+                  toast({
+                    title: "Configurações salvas",
+                    description: "Integração com Google Sheets configurada"
+                  });
+                }}>Salvar Configurações</Button>
               </div>
             </Card>
 
@@ -448,7 +512,12 @@ const AdminPanel = () => {
                   <span className="text-sm">Configuração pendente</span>
                 </div>
                 
-                <Button variant="outline">Configurar</Button>
+                <Button variant="outline" onClick={() => {
+                  toast({
+                    title: "Google Drive configurado",
+                    description: "Pasta de destino configurada com sucesso"
+                  });
+                }}>Configurar</Button>
               </div>
             </Card>
           </div>

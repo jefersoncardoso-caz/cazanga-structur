@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowRight, Building2 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
+import { CarouselBasic } from '@/components/ui/carousel-basic';
 
 const Home = () => {
   const { state, dispatch } = useApp();
@@ -33,15 +34,23 @@ const Home = () => {
             {state.siteSettings.introText}
           </p>
           
-          {/* Carousel Placeholder */}
-          <Card className="p-8 mb-8 bg-gradient-primary">
-            <div className="h-64 bg-white/10 rounded-lg flex items-center justify-center">
-              <div className="text-center text-primary-foreground">
-                <Building2 className="w-16 h-16 mx-auto mb-4 opacity-80" />
-                <p className="text-lg">Carrossel de Imagens Institucionais</p>
-                <p className="text-sm opacity-80">Gerenciado pelo painel administrativo</p>
+          {/* Carousel */}
+          <Card className="p-8 mb-8 bg-gradient-primary overflow-hidden">
+            {state.siteSettings.carouselImages && state.siteSettings.carouselImages.length > 0 ? (
+              <CarouselBasic 
+                images={state.siteSettings.carouselImages}
+                autoPlay={true}
+                interval={4000}
+              />
+            ) : (
+              <div className="h-64 bg-white/10 rounded-lg flex items-center justify-center">
+                <div className="text-center text-primary-foreground">
+                  <Building2 className="w-16 h-16 mx-auto mb-4 opacity-80" />
+                  <p className="text-lg">Carrossel de Imagens Institucionais</p>
+                  <p className="text-sm opacity-80">Adicione imagens no painel administrativo</p>
+                </div>
               </div>
-            </div>
+            )}
           </Card>
 
           {/* CTA Button */}
