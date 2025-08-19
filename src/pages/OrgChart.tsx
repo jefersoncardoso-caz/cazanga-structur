@@ -9,7 +9,7 @@ import MacroOrgChart from '@/components/orgcharts/MacroOrgChart';
 import GenteGestaoOrgChart from '@/components/orgcharts/GenteGestaoOrgChart';
 import TeamOrgChart from '@/components/orgcharts/TeamOrgChart';
 
-type OrgChartType = 'macro' | 'gente-gestao' | 'dho' | 'dp' | 'facilities' | 'sesmt' | 'sgq';
+type OrgChartType = 'macro' | 'organograma-gente-gestao' | 'dho' | 'dp' | 'facilities' | 'sesmt' | 'sgq';
 
 const OrgChartPage = () => {
   const { dispatch } = useApp();
@@ -23,7 +23,7 @@ const OrgChartPage = () => {
     switch (selectedChart) {
       case 'macro':
         return <MacroOrgChart />;
-      case 'gente-gestao':
+      case 'organograma-gente-gestao':
         return <GenteGestaoOrgChart onSelectTeam={setSelectedChart} />;
       case 'dho':
         return <TeamOrgChart team="DHO" />;
@@ -39,6 +39,9 @@ const OrgChartPage = () => {
         return <MacroOrgChart />;
     }
   };
+
+  const isGenteGestaoActive = selectedChart === 'organograma-gente-gestao' || 
+    ['dho', 'dp', 'facilities', 'sesmt', 'sgq'].includes(selectedChart);
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,23 +87,12 @@ const OrgChartPage = () => {
               Organograma Macro 2025
             </Button>
             <Button
-              variant={selectedChart === 'gente-gestao' ? 'default' : 'outline'}
+              variant={isGenteGestaoActive ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSelectedChart('gente-gestao')}
+              onClick={() => setSelectedChart('organograma-gente-gestao')}
             >
-              Gente e Gestão
+              Organograma Gente e Gestão
             </Button>
-            {['dho', 'dp', 'facilities', 'sesmt', 'sgq'].map((team) => (
-              <Button
-                key={team}
-                variant={selectedChart === team ? 'secondary' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedChart(team as OrgChartType)}
-                className="text-xs"
-              >
-                {team.toUpperCase()}
-              </Button>
-            ))}
           </div>
         </div>
       </nav>

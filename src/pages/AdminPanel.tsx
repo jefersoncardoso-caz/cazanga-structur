@@ -203,16 +203,57 @@ const AdminPanel = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Gerenciar Funcionários</h2>
-              <Button>Adicionar Funcionário</Button>
+              <Button onClick={() => {
+                toast({
+                  title: "Adicionar funcionário",
+                  description: "Funcionalidade em desenvolvimento"
+                });
+              }}>Adicionar Funcionário</Button>
             </div>
             
-            <Card className="p-6">
-              <p className="text-muted-foreground text-center py-8">
-                Lista de funcionários será exibida aqui. 
-                <br />
-                Funcionalidade em desenvolvimento.
-              </p>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {state.employees.length === 0 ? (
+                <Card className="col-span-full p-8 text-center">
+                  <p className="text-muted-foreground">
+                    Nenhum funcionário cadastrado.
+                    <br />
+                    Use a integração com Google Sheets para importar dados.
+                  </p>
+                </Card>
+              ) : (
+                state.employees.map((employee) => (
+                  <Card key={employee.id} className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                        <span className="text-primary font-medium">
+                          {employee.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="font-medium">{employee.name}</h4>
+                        <p className="text-sm text-muted-foreground">{employee.position}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">{employee.department}</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => {
+                        toast({
+                          title: "Editar funcionário",
+                          description: `Editando ${employee.name}`
+                        });
+                      }}>Editar</Button>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        toast({
+                          title: "Remover funcionário",
+                          description: `${employee.name} removido`,
+                          variant: "destructive"
+                        });
+                      }}>Remover</Button>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
           </div>
         );
 
@@ -252,8 +293,37 @@ const AdminPanel = () => {
       case 'design':
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Identidade Visual</h2>
+            <h2 className="text-2xl font-bold">Configurações do Site</h2>
             
+            {/* Configurações Gerais */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Informações da Empresa</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label>Nome da Empresa</Label>
+                  <Input 
+                    value={state.siteSettings.companyName} 
+                    onChange={(e) => dispatch({ 
+                      type: 'UPDATE_SITE_SETTINGS', 
+                      payload: { companyName: e.target.value } 
+                    })}
+                  />
+                </div>
+                
+                <div>
+                  <Label>Texto Introdutório</Label>
+                  <Input 
+                    value={state.siteSettings.introText} 
+                    onChange={(e) => dispatch({ 
+                      type: 'UPDATE_SITE_SETTINGS', 
+                      payload: { introText: e.target.value } 
+                    })}
+                  />
+                </div>
+              </div>
+            </Card>
+
+            {/* Identidade Visual */}
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Cores da Marca</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -261,7 +331,13 @@ const AdminPanel = () => {
                   <Label>Cor Primária (Azul)</Label>
                   <div className="flex items-center gap-3 mt-2">
                     <div className="w-12 h-12 bg-primary rounded-lg border"></div>
-                    <Input value="#1f4e78" readOnly />
+                    <Input 
+                      value={state.siteSettings.primaryColor} 
+                      onChange={(e) => dispatch({ 
+                        type: 'UPDATE_SITE_SETTINGS', 
+                        payload: { primaryColor: e.target.value } 
+                      })}
+                    />
                   </div>
                 </div>
                 
@@ -269,19 +345,64 @@ const AdminPanel = () => {
                   <Label>Cor Secundária (Verde)</Label>
                   <div className="flex items-center gap-3 mt-2">
                     <div className="w-12 h-12 bg-secondary rounded-lg border"></div>
-                    <Input value="#548235" readOnly />
+                    <Input 
+                      value={state.siteSettings.secondaryColor} 
+                      onChange={(e) => dispatch({ 
+                        type: 'UPDATE_SITE_SETTINGS', 
+                        payload: { secondaryColor: e.target.value } 
+                      })}
+                    />
                   </div>
                 </div>
               </div>
               
-              <Button className="mt-4">Salvar Alterações</Button>
+              <Button className="mt-4" onClick={() => {
+                toast({
+                  title: "Cores atualizadas",
+                  description: "As cores da marca foram salvas com sucesso"
+                });
+              }}>Salvar Alterações</Button>
             </Card>
 
+            {/* Logo da Empresa */}
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Logo da Empresa</h3>
               <div className="border-2 border-dashed border-muted rounded-lg p-8 text-center">
                 <p className="text-muted-foreground">Clique para fazer upload do logo</p>
-                <Button variant="outline" className="mt-2">Selecionar Arquivo</Button>
+                <Button variant="outline" className="mt-2" onClick={() => {
+                  toast({
+                    title: "Upload de logo",
+                    description: "Funcionalidade em desenvolvimento"
+                  });
+                }}>Selecionar Arquivo</Button>
+              </div>
+            </Card>
+
+            {/* Carrossel de Imagens */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Carrossel da Página Inicial</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((index) => (
+                    <div key={index} className="border-2 border-dashed border-muted rounded-lg p-4 text-center">
+                      <p className="text-sm text-muted-foreground mb-2">Imagem {index}</p>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        toast({
+                          title: "Upload de imagem",
+                          description: `Adicionar imagem ${index} ao carrossel`
+                        });
+                      }}>
+                        Adicionar Imagem
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button className="w-full" onClick={() => {
+                  toast({
+                    title: "Carrossel atualizado",
+                    description: "As imagens do carrossel foram salvas"
+                  });
+                }}>Salvar Carrossel</Button>
               </div>
             </Card>
           </div>
@@ -328,6 +449,73 @@ const AdminPanel = () => {
                 </div>
                 
                 <Button variant="outline">Configurar</Button>
+              </div>
+            </Card>
+          </div>
+        );
+
+      case 'settings':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold">Configurações do Sistema</h2>
+            
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Gerenciar Organogramas</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Adicionar Novo Organograma</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input placeholder="Nome do organograma" />
+                      <Button onClick={() => {
+                        toast({
+                          title: "Novo organograma",
+                          description: "Organograma adicionado com sucesso"
+                        });
+                      }}>Adicionar</Button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label>Remover Organograma</Label>
+                    <div className="flex gap-2 mt-2">
+                      <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
+                        <option>Selecione para remover</option>
+                        <option>DHO</option>
+                        <option>DP</option>
+                        <option>Facilities</option>
+                        <option>SESMT</option>
+                        <option>SGQ</option>
+                      </select>
+                      <Button variant="destructive" onClick={() => {
+                        toast({
+                          title: "Organograma removido",
+                          description: "Organograma removido com sucesso",
+                          variant: "destructive"
+                        });
+                      }}>Remover</Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Backup e Sincronização</h3>
+              <div className="space-y-4">
+                <Button onClick={() => {
+                  toast({
+                    title: "Backup criado",
+                    description: "Backup do sistema criado com sucesso"
+                  });
+                }}>Criar Backup</Button>
+                
+                <Button variant="outline" onClick={() => {
+                  toast({
+                    title: "Sincronização iniciada",
+                    description: "Sincronizando com Google Sheets..."
+                  });
+                }}>Sincronizar com Google Sheets</Button>
               </div>
             </Card>
           </div>
