@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +38,22 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
     parentId: editingEmployee?.parentId || 'none',
     visible: editingEmployee?.visible !== false
   }));
+  
+  // Auto-reset form when modal opens/closes or editing employee changes
+  useEffect(() => {
+    setFormData({
+      id: editingEmployee?.id || uuidv4(),
+      name: editingEmployee?.name || '',
+      position: editingEmployee?.position || '',
+      department: editingEmployee?.department || '',
+      team: editingEmployee?.team || '',
+      description: editingEmployee?.description || '',
+      photo: editingEmployee?.photo || '',
+      isManager: editingEmployee?.isManager || false,
+      parentId: editingEmployee?.parentId || 'none',
+      visible: editingEmployee?.visible !== false
+    });
+  }, [isOpen, editingEmployee]);
 
   const handleInputChange = (field: keyof Employee, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -126,6 +142,9 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
           <DialogTitle>
             {editingEmployee ? 'Editar Funcionário' : 'Adicionar Funcionário'}
           </DialogTitle>
+          <DialogDescription>
+            {editingEmployee ? 'Atualize as informações do funcionário' : 'Preencha os dados do novo funcionário'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

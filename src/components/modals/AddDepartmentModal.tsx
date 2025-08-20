@@ -56,6 +56,16 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({
 
       if (editingDepartment) {
         dispatch({ type: 'UPDATE_DEPARTMENT', payload: { id: department.id, updates: department } });
+        
+        // Tentar salvar no Google Sheets se estiver configurado
+        if (localStorage.getItem('google_sheets_connected') === 'true') {
+          try {
+            await googleSheetsService.addDepartment(department);
+          } catch (error) {
+            console.warn('Falha ao salvar no Google Sheets, dados salvos localmente');
+          }
+        }
+        
         toast({
           title: "Departamento atualizado",
           description: `${department.name} foi atualizado com sucesso`

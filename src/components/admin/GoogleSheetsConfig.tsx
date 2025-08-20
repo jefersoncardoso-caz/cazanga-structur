@@ -72,6 +72,9 @@ const GoogleSheetsConfig: React.FC = () => {
       localStorage.setItem('google_drive_folder', driveFolder);
       localStorage.setItem('google_config_last_saved', new Date().toISOString());
       
+      // Test connection after saving
+      await testConnection();
+      
       setLastSaved(new Date());
       
       toast({

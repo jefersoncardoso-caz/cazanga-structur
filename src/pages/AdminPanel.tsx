@@ -349,6 +349,35 @@ const AdminPanel = () => {
                     })}
                   />
                 </div>
+                
+                <Button 
+                  className="mt-4" 
+                  onClick={async () => {
+                    try {
+                      if (localStorage.getItem('google_sheets_connected') === 'true') {
+                        await googleSheetsService.updateSiteSettings(state.siteSettings);
+                        toast({
+                          title: "Informações salvas",
+                          description: "Informações da empresa salvas no Google Sheets com sucesso"
+                        });
+                      } else {
+                        localStorage.setItem('site_settings', JSON.stringify(state.siteSettings));
+                        toast({
+                          title: "Informações salvas localmente",
+                          description: "Configure o Google Sheets para sincronização completa"
+                        });
+                      }
+                    } catch (error) {
+                      toast({
+                        title: "Erro",
+                        description: "Erro ao salvar informações",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                >
+                  Salvar Informações
+                </Button>
               </div>
             </Card>
 
@@ -387,10 +416,32 @@ const AdminPanel = () => {
               
               <Button className="mt-4" onClick={async () => {
                 try {
-                  // Salvar configurações localmente primeiro
-                  localStorage.setItem('site_settings', JSON.stringify(state.siteSettings));
+                  // Salvar no Google Sheets se configurado
+                  if (localStorage.getItem('google_sheets_connected') === 'true') {
+                    try {
+                      await googleSheetsService.updateSiteSettings(state.siteSettings);
+                      toast({
+                        title: "Cores salvas",
+                        description: "Cores da marca salvas no Google Sheets com sucesso"
+                      });
+                    } catch (error) {
+                      console.warn('Falha ao salvar no Google Sheets');
+                      toast({
+                        title: "Erro",
+                        description: "Erro ao salvar no Google Sheets, mas salvo localmente",
+                        variant: "destructive"
+                      });
+                    }
+                  } else {
+                    // Salvar localmente se Google Sheets não estiver configurado
+                    localStorage.setItem('site_settings', JSON.stringify(state.siteSettings));
+                    toast({
+                      title: "Cores salvas localmente",
+                      description: "Configure o Google Sheets para sincronização completa"
+                    });
+                  }
                   
-                  // Aplicar as cores no CSS
+                  // Aplicar as cores no CSS imediatamente
                   const root = document.documentElement;
                   
                   // Converter hex para HSL se necessário
@@ -420,34 +471,14 @@ const AdminPanel = () => {
                   root.style.setProperty('--primary', hexToHsl(state.siteSettings.primaryColor));
                   root.style.setProperty('--secondary', hexToHsl(state.siteSettings.secondaryColor));
                   
-                  // Tentar salvar no Google Sheets se configurado
-                  if (localStorage.getItem('google_sheets_connected') === 'true') {
-                    try {
-                      await googleSheetsService.updateSiteSettings(state.siteSettings);
-                      toast({
-                        title: "Configurações salvas",
-                        description: "Cores atualizadas no sistema e no Google Sheets"
-                      });
-                    } catch (error) {
-                      toast({
-                        title: "Configurações salvas localmente",
-                        description: "Cores atualizadas no sistema (erro no Google Sheets)"
-                      });
-                    }
-                  } else {
-                    toast({
-                      title: "Configurações salvas",
-                      description: "Cores atualizadas no sistema local"
-                    });
-                  }
                 } catch (error) {
                   toast({
                     title: "Erro",
-                    description: "Erro ao salvar configurações: " + error.message,
+                    description: "Erro ao aplicar cores: " + error.message,
                     variant: "destructive"
                   });
                 }
-              }}>Salvar Alterações</Button>
+              }}>Salvar Cores</Button>
             </Card>
 
             {/* Logo da Empresa */}

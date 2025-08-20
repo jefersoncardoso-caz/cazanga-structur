@@ -77,9 +77,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_SELECTED_DEPARTMENT':
       return { ...state, selectedDepartment: action.payload };
     case 'UPDATE_SITE_SETTINGS':
+      const updatedSettings = { ...state.siteSettings, ...action.payload };
+      // Auto-sync to Google Sheets if configured
+      if (localStorage.getItem('google_sheets_connected') === 'true') {
+        googleSheetsService.updateSiteSettings(updatedSettings).catch(error => {
+          console.warn('Failed to auto-sync site settings:', error);
+        });
+      }
       return { 
         ...state, 
-        siteSettings: { ...state.siteSettings, ...action.payload } 
+        siteSettings: updatedSettings
       };
     case 'ADD_EMPLOYEE':
       return { 
