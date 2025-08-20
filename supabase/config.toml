@@ -1,1 +1,8 @@
 project_id = "tefjkdgyniebwanxyayg"
+
+[api]
+enabled = true
+port = 54321
+
+[functions.google-sheets]
+verify_jwt = false
