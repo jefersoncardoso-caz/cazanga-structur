@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
+import { toast } from '@/hooks/use-toast';
 import { 
   Sheet, 
   Download, 
@@ -44,12 +45,20 @@ const GoogleSheetsConfig: React.FC = () => {
     const id = extractSpreadsheetId(spreadsheetUrl);
     
     if (!spreadsheetUrl || !id) {
-      alert('Por favor, insira uma URL válida do Google Sheets');
+      toast({
+        title: "URL inválida",
+        description: "Por favor, insira uma URL válida do Google Sheets",
+        variant: "destructive"
+      });
       return;
     }
     
     if (!apiKey) {
-      alert('Por favor, insira a API Key do Google');
+      toast({
+        title: "API Key necessária",
+        description: "Por favor, insira a API Key do Google",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -65,12 +74,20 @@ const GoogleSheetsConfig: React.FC = () => {
       
       setLastSaved(new Date());
       
+      toast({
+        title: "Configurações salvas",
+        description: "Todas as configurações foram salvas com sucesso!"
+      });
+      
       // Test connection after saving
       await testConnection();
       
-      alert('Configurações salvas com sucesso!');
     } catch (error) {
-      alert('Erro ao salvar configurações');
+      toast({
+        title: "Erro ao salvar",
+        description: "Erro ao salvar configurações",
+        variant: "destructive"
+      });
     } finally {
       setIsSaving(false);
     }

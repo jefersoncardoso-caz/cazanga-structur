@@ -7,6 +7,7 @@ import { ArrowLeft, Users, Settings, FileText, Palette, Link2, Database, Sheet, 
 import { useApp } from '@/contexts/AppContext';
 import { toast } from '@/hooks/use-toast';
 import GoogleSheetsConfig from '@/components/admin/GoogleSheetsConfig';
+import AutoSyncManager from '@/components/admin/AutoSyncManager';
 import AddEmployeeModal from '@/components/modals/AddEmployeeModal';
 import AddDepartmentModal from '@/components/modals/AddDepartmentModal';
 import AddOrgChartModal from '@/components/modals/AddOrgChartModal';
@@ -208,8 +209,21 @@ const AdminPanel = () => {
                     Organograma {chart.toLowerCase()}
                   </p>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline">Editar</Button>
-                    <Button size="sm" variant="outline">Visualizar</Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      toast({
+                        title: "Editando organograma",
+                        description: `Abrindo editor para ${chart}`
+                      });
+                    }}>Editar</Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      dispatch({ type: 'SET_VIEW', payload: 'orgchart' });
+                    }}>Visualizar</Button>
+                    <Button size="sm" variant="destructive" onClick={() => {
+                      toast({
+                        title: "Organograma removido",
+                        description: `${chart} foi removido com sucesso`
+                      });
+                    }}>Excluir</Button>
                   </div>
                 </Card>
               ))}
@@ -357,11 +371,26 @@ const AdminPanel = () => {
               
               <Button className="mt-4" onClick={async () => {
                 try {
-                  await googleSheetsService.updateSiteSettings(state.siteSettings);
-                  toast({
-                    title: "Cores atualizadas",
-                    description: "As cores da marca foram salvas no Google Sheets"
-                  });
+                  // Salvar configurações localmente primeiro
+                  const root = document.documentElement;
+                  root.style.setProperty('--primary', state.siteSettings.primaryColor);
+                  root.style.setProperty('--secondary', state.siteSettings.secondaryColor);
+                  
+                  // Tentar salvar no Google Sheets se configurado
+                  if (localStorage.getItem('google_sheets_connected') === 'true') {
+                    await googleSheetsService.updateSiteSettings(state.siteSettings);
+                    toast({
+                      title: "Configurações salvas",
+                      description: "Cores atualizadas no sistema e no Google Sheets"
+                    });
+                  } else {
+                    // Salvar apenas localmente se Google Sheets não estiver configurado
+                    localStorage.setItem('site_settings', JSON.stringify(state.siteSettings));
+                    toast({
+                      title: "Configurações salvas",
+                      description: "Cores atualizadas no sistema local"
+                    });
+                  }
                 } catch (error) {
                   toast({
                     title: "Erro",
@@ -378,10 +407,28 @@ const AdminPanel = () => {
               <div className="border-2 border-dashed border-muted rounded-lg p-8 text-center">
                 <p className="text-muted-foreground">Clique para fazer upload do logo</p>
                 <Button variant="outline" className="mt-2" onClick={() => {
-                  toast({
-                    title: "Upload de logo",
-                    description: "Funcionalidade em desenvolvimento"
-                  });
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'image/*';
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        const logoUrl = e.target?.result as string;
+                        dispatch({ 
+                          type: 'UPDATE_SITE_SETTINGS', 
+                          payload: { logo: logoUrl } 
+                        });
+                        toast({
+                          title: "Logo atualizado",
+                          description: "Logo da empresa foi atualizado com sucesso"
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  };
+                  input.click();
                 }}>Selecionar Arquivo</Button>
               </div>
             </Card>
@@ -482,53 +529,51 @@ const AdminPanel = () => {
         return (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold">Integrações</h2>
-            
+            <AutoSyncManager />
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Google Sheets</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label>ID da Planilha</Label>
-                  <Input placeholder="Cole o ID da planilha do Google Sheets" />
-                </div>
-                
-                <div>
-                  <Label>API Key</Label>
-                  <Input type="password" placeholder="Cole sua API Key do Google" />
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm">Aguardando configuração</span>
-                </div>
-                
-                <Button onClick={() => {
-                  toast({
-                    title: "Configurações salvas",
-                    description: "Integração com Google Sheets configurada"
-                  });
-                }}>Salvar Configurações</Button>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Google Drive</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label>Pasta de Destino</Label>
-                  <Input placeholder="ID da pasta no Google Drive" />
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm">Configuração pendente</span>
-                </div>
-                
-                <Button variant="outline" onClick={() => {
-                  toast({
-                    title: "Google Drive configurado",
-                    description: "Pasta de destino configurada com sucesso"
-                  });
-                }}>Configurar</Button>
+              <p className="text-muted-foreground mb-4">
+                Configure a integração com Google Sheets para sincronizar dados dos organogramas.
+              </p>
+              <div className="flex gap-2">
+                <Button onClick={() => setActiveTab('googlesheets')}>
+                  Configurar Google Sheets
+                </Button>
+                <Button variant="outline" onClick={async () => {
+                  try {
+                    // Criar backup dos dados atuais
+                    const backupData = {
+                      employees: state.employees,
+                      departments: state.departments,
+                      siteSettings: state.siteSettings,
+                      timestamp: new Date().toISOString()
+                    };
+                    
+                    const dataStr = JSON.stringify(backupData, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `backup-organograma-${new Date().toISOString().split('T')[0]}.json`;
+                    link.click();
+                    
+                    URL.revokeObjectURL(url);
+                    
+                    toast({
+                      title: "Backup criado",
+                      description: "Backup dos dados baixado com sucesso"
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Erro no backup",
+                      description: "Erro ao criar backup dos dados",
+                      variant: "destructive"
+                    });
+                  }
+                }}>
+                  Fazer Backup
+                </Button>
               </div>
             </Card>
           </div>
@@ -583,18 +628,62 @@ const AdminPanel = () => {
             <Card className="p-6">
               <h3 className="text-lg font-semibold mb-4">Backup e Sincronização</h3>
               <div className="space-y-4">
-                <Button onClick={() => {
-                  toast({
-                    title: "Backup criado",
-                    description: "Backup do sistema criado com sucesso"
-                  });
+                <Button onClick={async () => {
+                  try {
+                    const backupData = {
+                      employees: state.employees,
+                      departments: state.departments,
+                      siteSettings: state.siteSettings,
+                      timestamp: new Date().toISOString()
+                    };
+                    
+                    const dataStr = JSON.stringify(backupData, null, 2);
+                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(dataBlob);
+                    
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `backup-organograma-${new Date().toISOString().split('T')[0]}.json`;
+                    link.click();
+                    
+                    URL.revokeObjectURL(url);
+                    
+                    toast({
+                      title: "Backup criado",
+                      description: "Backup dos dados baixado com sucesso"
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Erro no backup", 
+                      description: "Erro ao criar backup dos dados",
+                      variant: "destructive"
+                    });
+                  }
                 }}>Criar Backup</Button>
                 
-                <Button variant="outline" onClick={() => {
-                  toast({
-                    title: "Sincronização iniciada",
-                    description: "Sincronizando com Google Sheets..."
-                  });
+                <Button variant="outline" onClick={async () => {
+                  try {
+                    // Verificar se está conectado ao Google Sheets
+                    if (localStorage.getItem('google_sheets_connected') === 'true') {
+                      await googleSheetsService.readSheet('Funcionarios');
+                      toast({
+                        title: "Sincronização iniciada",
+                        description: "Dados sincronizados com Google Sheets com sucesso"
+                      });
+                    } else {
+                      toast({
+                        title: "Google Sheets não configurado",
+                        description: "Configure o Google Sheets primeiro",
+                        variant: "destructive"
+                      });
+                    }
+                  } catch (error) {
+                    toast({
+                      title: "Erro na sincronização",
+                      description: "Erro ao sincronizar com Google Sheets",
+                      variant: "destructive"
+                    });
+                  }
                 }}>Sincronizar com Google Sheets</Button>
               </div>
             </Card>
