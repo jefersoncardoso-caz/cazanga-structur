@@ -3,27 +3,35 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Users, Settings, FileText, Palette, Link2, Database, Sheet, Plus } from 'lucide-react';
+import { ArrowLeft, Users, Settings, FileText, Palette, Link2, Database, Sheet, Plus, Folder, CheckSquare } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from '@/hooks/use-toast';
 import GoogleSheetsConfig from '@/components/admin/GoogleSheetsConfig';
+import GoogleDriveIntegration from '@/components/admin/GoogleDriveIntegration';
+import StructureValidator from '@/components/admin/StructureValidator';
 import AutoSyncManager from '@/components/admin/AutoSyncManager';
 import AddEmployeeModal from '@/components/modals/AddEmployeeModal';
 import AddDepartmentModal from '@/components/modals/AddDepartmentModal';
+import EditDepartmentModal from '@/components/modals/EditDepartmentModal';
 import AddOrgChartModal from '@/components/modals/AddOrgChartModal';
 import EditOrgChartModal from '@/components/modals/EditOrgChartModal';
 import FileManager from '@/components/admin/FileManager';
 import { googleSheetsService } from '@/services/googleSheetsService';
+import { useGoogleSheets } from '@/hooks/useGoogleSheets';
+import { useAutoSync } from '@/hooks/useAutoSync';
 
 const AdminPanel = () => {
   const { state, dispatch } = useApp();
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { loadAllData } = useGoogleSheets();
+  const { manualSync, loadFromSheets } = useAutoSync();
   
   // Modal states
   const [addEmployeeModalOpen, setAddEmployeeModalOpen] = useState(false);
   const [addDepartmentModalOpen, setAddDepartmentModalOpen] = useState(false);
+  const [editDepartmentModalOpen, setEditDepartmentModalOpen] = useState(false);
   const [addOrgChartModalOpen, setAddOrgChartModalOpen] = useState(false);
   const [editOrgChartModalOpen, setEditOrgChartModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
@@ -104,16 +112,45 @@ const AdminPanel = () => {
     );
   }
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Users },
-    { id: 'orgcharts', label: 'Organogramas', icon: Users },
-    { id: 'employees', label: 'Funcionários', icon: Users },
-    { id: 'files', label: 'Arquivos', icon: FileText },
-    { id: 'design', label: 'Identidade Visual', icon: Palette },
-    { id: 'pages', label: 'Menu Lateral', icon: Link2 },
-    { id: 'googlesheets', label: 'Google Sheets', icon: Sheet },
-    { id: 'integrations', label: 'Integrações', icon: Database },
-    { id: 'settings', label: 'Configurações', icon: Settings }
+  // Menu reorganizado em grupos lógicos
+  const menuGroups = [
+    {
+      title: 'Principal',
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: Settings }
+      ]
+    },
+    {
+      title: 'Gestão de Dados',
+      items: [
+        { id: 'employees', label: 'Funcionários', icon: Users },
+        { id: 'departments', label: 'Departamentos', icon: Users },
+        { id: 'orgcharts', label: 'Organogramas', icon: Users }
+      ]
+    },
+    {
+      title: 'Configuração do Site',
+      items: [
+        { id: 'design', label: 'Identidade Visual', icon: Palette },
+        { id: 'pages', label: 'Menu Lateral', icon: Link2 }
+      ]
+    },
+    {
+      title: 'Integrações e Arquivos',
+      items: [
+        { id: 'googlesheets', label: 'Google Sheets', icon: Sheet },
+        { id: 'googledrive', label: 'Google Drive', icon: Folder },
+        { id: 'validator', label: 'Validador', icon: CheckSquare },
+        { id: 'files', label: 'Arquivos', icon: FileText }
+      ]
+    },
+    {
+      title: 'Sistema',
+      items: [
+        { id: 'sync', label: 'Sincronização', icon: Database },
+        { id: 'settings', label: 'Configurações', icon: Settings }
+      ]
+    }
   ];
 
   const renderContent = () => {
@@ -121,7 +158,19 @@ const AdminPanel = () => {
       case 'dashboard':
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Dashboard</h2>
+              <div className="flex gap-2">
+                <Button onClick={loadFromSheets} variant="outline" size="sm">
+                  Recarregar do Google Sheets
+                </Button>
+                <Button onClick={manualSync} variant="outline" size="sm">
+                  Sincronizar Agora
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Card className="p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <Users className="w-8 h-8 text-primary" />
@@ -146,60 +195,172 @@ const AdminPanel = () => {
 
               <Card className="p-6">
                 <div className="flex items-center gap-3 mb-4">
+                  <Sheet className="w-8 h-8 text-primary" />
+                  <h3 className="text-lg font-semibold">Organogramas</h3>
+                </div>
+                <p className="text-2xl font-bold text-primary">
+                  {orgCharts.length}
+                </p>
+                <p className="text-sm text-muted-foreground">Disponíveis</p>
+              </Card>
+
+              <Card className="p-6">
+                <div className="flex items-center gap-3 mb-4">
                   <Database className="w-8 h-8 text-primary" />
                   <h3 className="text-lg font-semibold">Sincronização</h3>
                 </div>
                 <p className="text-sm font-medium text-green-600">
-                  {localStorage.getItem('google_sheets_spreadsheet_id') ? 'Conectado' : 'Desconectado'}
+                  {localStorage.getItem('google_sheets_connected') === 'true' ? 'Conectado' : 'Desconectado'}
                 </p>
                 <p className="text-xs text-muted-foreground">Google Sheets</p>
               </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Ações Rápidas</h3>
-                <div className="space-y-2">
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => setActiveTab('employees')}
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Gerenciar Funcionários
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => setActiveTab('orgcharts')}
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Editar Organogramas
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => setActiveTab('design')}
-                  >
-                    <Palette className="w-4 h-4 mr-2" />
-                    Identidade Visual
-                  </Button>
-                </div>
-              </Card>
+            {/* Ações Rápidas */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Ações Rápidas</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex-col"
+                  onClick={() => setAddEmployeeModalOpen(true)}
+                >
+                  <Users className="w-6 h-6 mb-2" />
+                  Adicionar Funcionário
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex-col"
+                  onClick={() => setAddDepartmentModalOpen(true)}
+                >
+                  <Users className="w-6 h-6 mb-2" />
+                  Adicionar Departamento
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex-col"
+                  onClick={() => setActiveTab('design')}
+                >
+                  <Palette className="w-6 h-6 mb-2" />
+                  Identidade Visual
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-20 flex-col"
+                  onClick={() => setActiveTab('validator')}
+                >
+                  <CheckSquare className="w-6 h-6 mb-2" />
+                  Validar Estrutura
+                </Button>
+              </div>
+            </Card>
+          </div>
+        );
 
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Últimas Atividades</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="border-l-2 border-primary pl-3">
-                    <p className="font-medium">Sistema inicializado</p>
-                    <p className="text-muted-foreground">Painel administrativo ativo</p>
-                  </div>
-                  <div className="border-l-2 border-muted pl-3">
-                    <p className="font-medium">Aguardando configuração</p>
-                    <p className="text-muted-foreground">Google Sheets integration</p>
-                  </div>
-                </div>
-              </Card>
+      case 'employees':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Gerenciar Funcionários</h2>
+              <Button onClick={() => setAddEmployeeModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Funcionário
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {state.employees.length === 0 ? (
+                <Card className="col-span-full p-8 text-center">
+                  <p className="text-muted-foreground">
+                    Nenhum funcionário cadastrado.
+                    <br />
+                    Use o botão "Adicionar Funcionário" ou importe do Google Sheets.
+                  </p>
+                </Card>
+              ) : (
+                state.employees.map((employee) => (
+                  <Card key={employee.id} className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                        <span className="text-primary font-medium">
+                          {employee.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="font-medium">{employee.name}</h4>
+                        <p className="text-sm text-muted-foreground">{employee.position}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">{employee.department}</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setEditingEmployee(employee);
+                        setAddEmployeeModalOpen(true);
+                      }}>Editar</Button>
+                      <Button size="sm" variant="destructive" onClick={async () => {
+                        const confirmed = window.confirm(`Tem certeza que deseja remover ${employee.name}?`);
+                        if (confirmed) {
+                          dispatch({ type: 'DELETE_EMPLOYEE', payload: employee.id });
+                          toast({
+                            title: "Funcionário removido",
+                            description: `${employee.name} foi removido`
+                          });
+                        }
+                      }}>Remover</Button>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+        );
+
+      case 'departments':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Gerenciar Departamentos</h2>
+              <Button onClick={() => setAddDepartmentModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Departamento
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {state.departments.length === 0 ? (
+                <Card className="col-span-full p-8 text-center">
+                  <p className="text-muted-foreground">
+                    Nenhum departamento cadastrado.
+                    <br />
+                    Use o botão "Adicionar Departamento" ou importe do Google Sheets.
+                  </p>
+                </Card>
+              ) : (
+                state.departments.map((department) => (
+                  <Card key={department.id} className="p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div 
+                        className="w-4 h-4 rounded-full" 
+                        style={{ backgroundColor: department.color }}
+                      ></div>
+                      <h4 className="font-medium">{department.name}</h4>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {department.employees.length} funcionários
+                    </p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setEditingDepartment(department);
+                        setEditDepartmentModalOpen(true);
+                      }}>Editar</Button>
+                      <Button size="sm" variant="destructive" onClick={() => {
+                        setEditingDepartment(department);
+                        setEditDepartmentModalOpen(true);
+                      }}>Excluir</Button>
+                    </div>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         );
@@ -247,82 +408,10 @@ const AdminPanel = () => {
           </div>
         );
 
-      case 'employees':
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Gerenciar Funcionários</h2>
-              <div className="flex gap-2">
-                <Button onClick={() => setAddDepartmentModalOpen(true)} variant="outline">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Departamento
-                </Button>
-                <Button onClick={() => setAddEmployeeModalOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Funcionário
-                </Button>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {state.employees.length === 0 ? (
-                <Card className="col-span-full p-8 text-center">
-                  <p className="text-muted-foreground">
-                    Nenhum funcionário cadastrado.
-                    <br />
-                    Use a integração com Google Sheets para importar dados.
-                  </p>
-                </Card>
-              ) : (
-                state.employees.map((employee) => (
-                  <Card key={employee.id} className="p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                        <span className="text-primary font-medium">
-                          {employee.name.charAt(0)}
-                        </span>
-                      </div>
-                      <div>
-                        <h4 className="font-medium">{employee.name}</h4>
-                        <p className="text-sm text-muted-foreground">{employee.position}</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-3">{employee.department}</p>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => {
-                        setEditingEmployee(employee);
-                        setAddEmployeeModalOpen(true);
-                      }}>Editar</Button>
-                      <Button size="sm" variant="destructive" onClick={async () => {
-                        try {
-                          dispatch({ type: 'DELETE_EMPLOYEE', payload: employee.id });
-                          toast({
-                            title: "Funcionário removido",
-                            description: `${employee.name} foi removido`
-                          });
-                        } catch (error) {
-                          toast({
-                            title: "Erro",
-                            description: "Erro ao remover funcionário",
-                            variant: "destructive"
-                          });
-                        }
-                      }}>Remover</Button>
-                    </div>
-                  </Card>
-                ))
-              )}
-            </div>
-          </div>
-        );
-
-      case 'files':
-        return <FileManager />;
-
       case 'design':
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Configurações do Site</h2>
+            <h2 className="text-2xl font-bold">Identidade Visual</h2>
             
             {/* Configurações Gerais */}
             <Card className="p-6">
@@ -358,7 +447,7 @@ const AdminPanel = () => {
                         await googleSheetsService.updateSiteSettings(state.siteSettings);
                         toast({
                           title: "Informações salvas",
-                          description: "Informações da empresa salvas no Google Sheets com sucesso"
+                          description: "Informações da empresa salvas no Google Sheets"
                         });
                       } else {
                         localStorage.setItem('site_settings', JSON.stringify(state.siteSettings));
@@ -386,10 +475,11 @@ const AdminPanel = () => {
               <h3 className="text-lg font-semibold mb-4">Cores da Marca</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Cor Primária (Azul)</Label>
+                  <Label>Cor Primária</Label>
                   <div className="flex items-center gap-3 mt-2">
                     <div className="w-12 h-12 bg-primary rounded-lg border"></div>
                     <Input 
+                      type="color"
                       value={state.siteSettings.primaryColor} 
                       onChange={(e) => dispatch({ 
                         type: 'UPDATE_SITE_SETTINGS', 
@@ -400,10 +490,11 @@ const AdminPanel = () => {
                 </div>
                 
                 <div>
-                  <Label>Cor Secundária (Verde)</Label>
+                  <Label>Cor Secundária</Label>
                   <div className="flex items-center gap-3 mt-2">
                     <div className="w-12 h-12 bg-secondary rounded-lg border"></div>
                     <Input 
+                      type="color"
                       value={state.siteSettings.secondaryColor} 
                       onChange={(e) => dispatch({ 
                         type: 'UPDATE_SITE_SETTINGS', 
@@ -416,35 +507,23 @@ const AdminPanel = () => {
               
               <Button className="mt-4" onClick={async () => {
                 try {
-                  // Salvar no Google Sheets se configurado
                   if (localStorage.getItem('google_sheets_connected') === 'true') {
-                    try {
-                      await googleSheetsService.updateSiteSettings(state.siteSettings);
-                      toast({
-                        title: "Cores salvas",
-                        description: "Cores da marca salvas no Google Sheets com sucesso"
-                      });
-                    } catch (error) {
-                      console.warn('Falha ao salvar no Google Sheets');
-                      toast({
-                        title: "Erro",
-                        description: "Erro ao salvar no Google Sheets, mas salvo localmente",
-                        variant: "destructive"
-                      });
-                    }
+                    await googleSheetsService.updateSiteSettings(state.siteSettings);
+                    toast({
+                      title: "Cores salvas",
+                      description: "Cores da marca salvas no Google Sheets"
+                    });
                   } else {
-                    // Salvar localmente se Google Sheets não estiver configurado
                     localStorage.setItem('site_settings', JSON.stringify(state.siteSettings));
                     toast({
                       title: "Cores salvas localmente",
                       description: "Configure o Google Sheets para sincronização completa"
                     });
                   }
-                  
+
                   // Aplicar as cores no CSS imediatamente
                   const root = document.documentElement;
                   
-                  // Converter hex para HSL se necessário
                   const hexToHsl = (hex: string) => {
                     const r = parseInt(hex.slice(1, 3), 16) / 255;
                     const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -474,43 +553,11 @@ const AdminPanel = () => {
                 } catch (error) {
                   toast({
                     title: "Erro",
-                    description: "Erro ao aplicar cores: " + error.message,
+                    description: "Erro ao salvar cores",
                     variant: "destructive"
                   });
                 }
               }}>Salvar Cores</Button>
-            </Card>
-
-            {/* Logo da Empresa */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Logo da Empresa</h3>
-              <div className="border-2 border-dashed border-muted rounded-lg p-8 text-center">
-                <p className="text-muted-foreground">Clique para fazer upload do logo</p>
-                <Button variant="outline" className="mt-2" onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = 'image/*';
-                  input.onchange = (e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (e) => {
-                        const logoUrl = e.target?.result as string;
-                        dispatch({ 
-                          type: 'UPDATE_SITE_SETTINGS', 
-                          payload: { logo: logoUrl } 
-                        });
-                        toast({
-                          title: "Logo atualizado",
-                          description: "Logo da empresa foi atualizado com sucesso"
-                        });
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  };
-                  input.click();
-                }}>Selecionar Arquivo</Button>
-              </div>
             </Card>
 
             {/* Carrossel de Imagens */}
@@ -530,7 +577,7 @@ const AdminPanel = () => {
                             const newImages = state.siteSettings.carouselImages?.filter((_, i) => i !== index) || [];
                             dispatch({ 
                               type: 'UPDATE_SITE_SETTINGS', 
-                              payload: { ...state.siteSettings, carouselImages: newImages }
+                              payload: { carouselImages: newImages }
                             });
                             toast({
                               title: "Imagem removida",
@@ -564,7 +611,6 @@ const AdminPanel = () => {
                             dispatch({ 
                               type: 'UPDATE_SITE_SETTINGS', 
                               payload: { 
-                                ...state.siteSettings, 
                                 carouselImages: [...currentImages, input.value]
                               }
                             });
@@ -584,7 +630,6 @@ const AdminPanel = () => {
                         dispatch({ 
                           type: 'UPDATE_SITE_SETTINGS', 
                           payload: { 
-                            ...state.siteSettings, 
                             carouselImages: [...currentImages, input.value]
                           }
                         });
@@ -597,6 +642,30 @@ const AdminPanel = () => {
                     }}>Adicionar</Button>
                   </div>
                 </div>
+
+                <Button onClick={async () => {
+                  try {
+                    if (localStorage.getItem('google_sheets_connected') === 'true') {
+                      await googleSheetsService.updateSiteSettings(state.siteSettings);
+                      toast({
+                        title: "Carrossel salvo",
+                        description: "Imagens do carrossel salvas no Google Sheets"
+                      });
+                    } else {
+                      localStorage.setItem('site_settings', JSON.stringify(state.siteSettings));
+                      toast({
+                        title: "Carrossel salvo localmente",
+                        description: "Configure o Google Sheets para sincronização completa"
+                      });
+                    }
+                  } catch (error) {
+                    toast({
+                      title: "Erro",
+                      description: "Erro ao salvar carrossel",
+                      variant: "destructive"
+                    });
+                  }
+                }}>Salvar Carrossel</Button>
               </div>
             </Card>
           </div>
@@ -605,23 +674,50 @@ const AdminPanel = () => {
       case 'googlesheets':
         return <GoogleSheetsConfig />;
 
-      case 'integrations':
+      case 'googledrive':
+        return <GoogleDriveIntegration />;
+
+      case 'validator':
+        return <StructureValidator />;
+
+      case 'files':
+        return <FileManager />;
+
+      case 'sync':
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Integrações</h2>
+            <h2 className="text-2xl font-bold">Sincronização</h2>
             <AutoSyncManager />
+            
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Google Sheets</h3>
-              <p className="text-muted-foreground mb-4">
-                Configure a integração com Google Sheets para sincronizar dados dos organogramas.
-              </p>
-              <div className="flex gap-2">
-                <Button onClick={() => setActiveTab('googlesheets')}>
-                  Configurar Google Sheets
-                </Button>
-                <Button variant="outline" onClick={async () => {
+              <h3 className="text-lg font-semibold mb-4">Sincronização Manual</h3>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Button onClick={loadFromSheets}>
+                    Importar do Google Sheets
+                  </Button>
+                  <Button onClick={manualSync} variant="outline">
+                    Exportar para Google Sheets
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Use a importação para carregar dados do Google Sheets e a exportação para salvar dados locais no Google Sheets.
+                </p>
+              </div>
+            </Card>
+          </div>
+        );
+
+      case 'settings':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold">Configurações do Sistema</h2>
+            
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Backup e Restauração</h3>
+              <div className="space-y-4">
+                <Button onClick={async () => {
                   try {
-                    // Criar backup dos dados atuais
                     const backupData = {
                       employees: state.employees,
                       departments: state.departments,
@@ -651,121 +747,24 @@ const AdminPanel = () => {
                       variant: "destructive"
                     });
                   }
-                }}>
-                  Fazer Backup
-                </Button>
+                }}>Criar Backup</Button>
+                
+                <p className="text-sm text-muted-foreground">
+                  Crie um backup local dos dados para proteção contra perda de informações.
+                </p>
               </div>
             </Card>
           </div>
         );
 
-      case 'settings':
+      case 'pages':
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Configurações do Sistema</h2>
-            
+            <h2 className="text-2xl font-bold">Menu Lateral</h2>
             <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Gerenciar Organogramas</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Adicionar Novo Organograma</Label>
-                    <div className="flex gap-2 mt-2">
-                      <Input placeholder="Nome do organograma" />
-                      <Button onClick={() => {
-                        toast({
-                          title: "Novo organograma",
-                          description: "Organograma adicionado com sucesso"
-                        });
-                      }}>Adicionar</Button>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label>Remover Organograma</Label>
-                    <div className="flex gap-2 mt-2">
-                      <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background">
-                        <option>Selecione para remover</option>
-                        <option>DHO</option>
-                        <option>DP</option>
-                        <option>Facilities</option>
-                        <option>SESMT</option>
-                        <option>SGQ</option>
-                      </select>
-                      <Button variant="destructive" onClick={() => {
-                        toast({
-                          title: "Organograma removido",
-                          description: "Organograma removido com sucesso",
-                          variant: "destructive"
-                        });
-                      }}>Remover</Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Backup e Sincronização</h3>
-              <div className="space-y-4">
-                <Button onClick={async () => {
-                  try {
-                    const backupData = {
-                      employees: state.employees,
-                      departments: state.departments,
-                      siteSettings: state.siteSettings,
-                      timestamp: new Date().toISOString()
-                    };
-                    
-                    const dataStr = JSON.stringify(backupData, null, 2);
-                    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                    const url = URL.createObjectURL(dataBlob);
-                    
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `backup-organograma-${new Date().toISOString().split('T')[0]}.json`;
-                    link.click();
-                    
-                    URL.revokeObjectURL(url);
-                    
-                    toast({
-                      title: "Backup criado",
-                      description: "Backup dos dados baixado com sucesso"
-                    });
-                  } catch (error) {
-                    toast({
-                      title: "Erro no backup", 
-                      description: "Erro ao criar backup dos dados",
-                      variant: "destructive"
-                    });
-                  }
-                }}>Criar Backup</Button>
-                
-                <Button variant="outline" onClick={async () => {
-                  try {
-                    // Verificar se está conectado ao Google Sheets
-                    if (localStorage.getItem('google_sheets_connected') === 'true') {
-                      await googleSheetsService.readSheet('Funcionarios');
-                      toast({
-                        title: "Sincronização iniciada",
-                        description: "Dados sincronizados com Google Sheets com sucesso"
-                      });
-                    } else {
-                      toast({
-                        title: "Google Sheets não configurado",
-                        description: "Configure o Google Sheets primeiro",
-                        variant: "destructive"
-                      });
-                    }
-                  } catch (error) {
-                    toast({
-                      title: "Erro na sincronização",
-                      description: "Erro ao sincronizar com Google Sheets",
-                      variant: "destructive"
-                    });
-                  }
-                }}>Sincronizar com Google Sheets</Button>
-              </div>
+              <p className="text-muted-foreground">
+                Configurações do menu lateral do site em desenvolvimento.
+              </p>
             </Card>
           </div>
         );
@@ -786,7 +785,7 @@ const AdminPanel = () => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold">Painel Administrativo - Cazanga</h1>
+              <h1 className="text-xl font-bold">Painel Administrativo - {state.siteSettings.companyName}</h1>
             </div>
             <Button 
               variant="ghost" 
@@ -804,21 +803,31 @@ const AdminPanel = () => {
       <div className="flex">
         {/* Sidebar */}
         <aside className="w-64 bg-muted/30 min-h-screen p-4">
-          <nav className="space-y-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.id}
-                  variant={activeTab === item.id ? 'default' : 'ghost'}
-                  className="w-full justify-start"
-                  onClick={() => setActiveTab(item.id)}
-                >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {item.label}
-                </Button>
-              );
-            })}
+          <nav className="space-y-4">
+            {menuGroups.map((group, index) => (
+              <div key={index}>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  {group.title}
+                </h3>
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Button
+                        key={item.id}
+                        variant={activeTab === item.id ? 'default' : 'ghost'}
+                        className="w-full justify-start"
+                        onClick={() => setActiveTab(item.id)}
+                        size="sm"
+                      >
+                        <Icon className="w-4 h-4 mr-2" />
+                        {item.label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
         </aside>
 
@@ -830,51 +839,50 @@ const AdminPanel = () => {
 
       {/* Modals */}
       <AddEmployeeModal 
-        isOpen={addEmployeeModalOpen}
+        isOpen={addEmployeeModalOpen} 
         onClose={() => {
           setAddEmployeeModalOpen(false);
           setEditingEmployee(null);
         }}
-        editingEmployee={editingEmployee}
       />
-      
       <AddDepartmentModal 
-        isOpen={addDepartmentModalOpen}
+        isOpen={addDepartmentModalOpen} 
+        onClose={() => setAddDepartmentModalOpen(false)} 
+      />
+      <EditDepartmentModal 
+        isOpen={editDepartmentModalOpen} 
         onClose={() => {
-          setAddDepartmentModalOpen(false);
+          setEditDepartmentModalOpen(false);
           setEditingDepartment(null);
         }}
-        editingDepartment={editingDepartment}
+        department={editingDepartment}
       />
-      
       <AddOrgChartModal 
-        isOpen={addOrgChartModalOpen}
-        onClose={() => setAddOrgChartModalOpen(false)}
-        onSuccess={() => {
-          // Adicionar novo organograma à lista
-          const newId = (Math.max(...orgCharts.map(org => parseInt(org.id))) + 1).toString();
-          // Este será tratado pelo modal AddOrgChartModal através do callback
-          toast({
-            title: "Organograma criado",
-            description: "Novo organograma disponível"
-          });
-        }}
+        isOpen={addOrgChartModalOpen} 
+        onClose={() => setAddOrgChartModalOpen(false)} 
       />
-      
       <EditOrgChartModal 
-        isOpen={editOrgChartModalOpen}
+        isOpen={editOrgChartModalOpen} 
         onClose={() => {
           setEditOrgChartModalOpen(false);
           setEditingOrgChart(null);
         }}
         orgChart={editingOrgChart}
-        onSave={(updatedOrgChart) => {
-          setOrgCharts(prev => prev.map(org => 
-            org.id === updatedOrgChart.id ? updatedOrgChart : org
+        onSave={(updatedChart) => {
+          setOrgCharts(prev => prev.map(chart => 
+            chart.id === updatedChart.id ? updatedChart : chart
           ));
+          toast({
+            title: "Organograma atualizado",
+            description: "Organograma foi atualizado com sucesso"
+          });
         }}
-        onDelete={(id) => {
-          setOrgCharts(prev => prev.filter(org => org.id !== id));
+        onDelete={(chartId) => {
+          setOrgCharts(prev => prev.filter(chart => chart.id !== chartId));
+          toast({
+            title: "Organograma removido",
+            description: "Organograma foi removido com sucesso"
+          });
         }}
       />
     </div>
