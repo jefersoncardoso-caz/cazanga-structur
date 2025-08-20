@@ -4,7 +4,7 @@ import { googleSheetsService } from '@/services/googleSheetsService';
 import { useToast } from '@/hooks/use-toast';
 
 export const useAutoSync = () => {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const { toast } = useToast();
 
   // Auto-sync site settings whenever they change
@@ -77,14 +77,16 @@ export const useAutoSync = () => {
       // Sync all data to Google Sheets
       await Promise.all([
         googleSheetsService.updateSiteSettings(state.siteSettings),
-        // Note: Employee and department sync would need to be implemented
-        // in the GoogleSheetsService with bulk update methods
+        // Add employee and department sync when available
       ]);
 
       toast({
         title: "Sincronização completa",
         description: "Todos os dados foram sincronizados com o Google Sheets"
       });
+      
+      // Reload data from Google Sheets to ensure consistency
+      await loadFromSheets();
     } catch (error) {
       toast({
         title: "Erro na sincronização",
@@ -105,8 +107,8 @@ export const useAutoSync = () => {
     }
 
     try {
-      // Force reload data from Google Sheets
-      window.location.reload();
+      // Load fresh data from Google Sheets
+      await googleSheetsService.loadAllData(dispatch);
       
       toast({
         title: "Dados recarregados",
@@ -119,7 +121,7 @@ export const useAutoSync = () => {
         variant: "destructive"
       });
     }
-  }, [toast]);
+  }, [dispatch, toast]);
 
   return { manualSync, loadFromSheets };
 };

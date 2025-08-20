@@ -1,16 +1,69 @@
 import React from 'react';
-import { OrgChart, OrgLevel, OrgConnection } from '@/components/ui/org-chart';
+import { OrgChart, OrgLevel } from '@/components/ui/org-chart';
 import { OrgChartNode } from '@/components/ui/org-chart-node';
+import { useApp } from '@/contexts/AppContext';
 
 const MacroOrgChart = () => {
+  const { state } = useApp();
+  const { departments, employees } = state;
+
+  // Helper function to get department by name
+  const getDepartmentByName = (name: string) => {
+    return departments.find(dept => 
+      dept.name.toLowerCase().includes(name.toLowerCase()) || 
+      name.toLowerCase().includes(dept.name.toLowerCase())
+    );
+  };
+
+  // Helper function to get employees count for a department
+  const getEmployeeCount = (departmentName: string) => {
+    return employees.filter(emp => 
+      emp.department.toLowerCase().includes(departmentName.toLowerCase()) ||
+      departmentName.toLowerCase().includes(emp.department.toLowerCase())
+    ).length;
+  };
+
+  // Helper function to get managers for a department
+  const getManagers = (departmentName: string) => {
+    return employees.filter(emp => 
+      emp.isManager && 
+      (emp.department.toLowerCase().includes(departmentName.toLowerCase()) ||
+       departmentName.toLowerCase().includes(emp.department.toLowerCase()))
+    );
+  };
+
+  // Get all visible departments
+  const visibleDepartments = departments.filter(dept => dept.visible !== false);
+
   return (
-    <OrgChart title="Organograma Macro 2025">
-      {/* Sócios */}
+    <OrgChart title={`Organograma Macro ${new Date().getFullYear()}`}>
+      {/* Directors/Top Level */}
       <OrgLevel>
-        <OrgChartNode 
-          title="SÓCIOS" 
-          variant="manager"
-        />
+        {employees.filter(emp => 
+          emp.isManager && 
+          (emp.position?.toLowerCase().includes('diretor') || 
+           emp.position?.toLowerCase().includes('sócio') ||
+           emp.department?.toLowerCase().includes('diretoria'))
+        ).map(manager => (
+          <OrgChartNode 
+            key={manager.id}
+            title={manager.position || manager.name} 
+            variant="manager"
+          />
+        ))}
+        
+        {/* Fallback if no directors found */}
+        {employees.filter(emp => 
+          emp.isManager && 
+          (emp.position?.toLowerCase().includes('diretor') || 
+           emp.position?.toLowerCase().includes('sócio') ||
+           emp.department?.toLowerCase().includes('diretoria'))
+        ).length === 0 && (
+          <OrgChartNode 
+            title="DIRETORIA" 
+            variant="manager"
+          />
+        )}
       </OrgLevel>
 
       {/* Connection Line */}
@@ -18,128 +71,62 @@ const MacroOrgChart = () => {
         <div className="w-px h-8 bg-primary"></div>
       </div>
 
-      {/* Diretor Executivo */}
-      <OrgLevel>
-        <OrgChartNode 
-          title="DIRETOR EXECUTIVO" 
-          variant="manager"
-        />
-      </OrgLevel>
+      {/* Departments/Gerências */}
+      <OrgLevel className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
+        {visibleDepartments.map(department => {
+          const departmentEmployees = employees.filter(emp => 
+            emp.department === department.name && emp.visible !== false
+          );
+          const managers = departmentEmployees.filter(emp => emp.isManager);
+          const regularEmployees = departmentEmployees.filter(emp => !emp.isManager);
 
-      {/* Connection Line */}
-      <div className="flex justify-center mb-4">
-        <div className="w-px h-8 bg-primary"></div>
-      </div>
+          return (
+            <div key={department.id} className="flex flex-col items-center">
+              {/* Department Manager or Department Name */}
+              {managers.length > 0 ? (
+                managers.map(manager => (
+                  <OrgChartNode 
+                    key={manager.id}
+                    title={manager.position || `GERENTE DE ${department.name.toUpperCase()}`}
+                    subtitle={manager.name}
+                    variant="team"
+                  />
+                ))
+              ) : (
+                <OrgChartNode 
+                  title={department.name.toUpperCase()}
+                  variant="team"
+                  count={departmentEmployees.length}
+                />
+              )}
 
-      {/* Gerências */}
-      <OrgLevel className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-4 max-w-7xl mx-auto">
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="GERENTE DE MARKETING"
-            variant="team"
-          />
-          <div className="mt-4 space-y-2">
-            <OrgChartNode title="PCM" count={3} />
-            <OrgChartNode title="MANUTENÇÃO AUTOMOTIVA" count={3} />
-            <OrgChartNode title="MANUTENÇÃO ELETROTÉCNICA" count={3} />
-            <OrgChartNode title="MANUTENÇÃO INDUSTRIAL" count={3} />
+              {/* Department Teams/Employees */}
+              {regularEmployees.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {/* Group by team */}
+                  {Array.from(new Set(regularEmployees.map(emp => emp.team || 'Geral'))).map(team => {
+                    const teamEmployees = regularEmployees.filter(emp => (emp.team || 'Geral') === team);
+                    return (
+                      <OrgChartNode 
+                        key={`${department.id}-${team}`}
+                        title={team.toUpperCase()} 
+                        count={teamEmployees.length}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Show message if no departments */}
+        {visibleDepartments.length === 0 && (
+          <div className="col-span-full text-center text-muted-foreground py-8">
+            <p>Nenhum departamento configurado.</p>
+            <p className="text-sm">Configure departamentos no painel administrativo.</p>
           </div>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="GERENTE DE ENGENHARIA E PROJETOS"
-            variant="team"
-          />
-          <div className="mt-4 space-y-2">
-            <OrgChartNode title="PROJETOS" count={4} />
-            <OrgChartNode title="CONTROLE PATRIMONIAL" count={3} />
-            <OrgChartNode title="CONTÁBIL/FISCAL/FINANCEIRO" count={3} />
-            <OrgChartNode title="COMPRAS" count={3} />
-            <OrgChartNode title="CUSTOS" count={3} />
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="GERENTE DE FINANÇAS E SUPRIMENTOS"
-            variant="team"
-          />
-          <div className="mt-4 space-y-2">
-            <OrgChartNode title="IT" count={4} />
-            <OrgChartNode title="MINERAÇÃO" count={5} />
-            <OrgChartNode title="INDUSTRIAL" count={3} />
-            <OrgChartNode title="LABORATÓRIO" count={3} />
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="SUPERVISOR DE TI"
-            variant="team"
-          />
-          <div className="mt-4 space-y-2">
-            <OrgChartNode title="RCT" count={5} />
-            <OrgChartNode title="COMERCIAL" count={3} />
-            <OrgChartNode title="MARKETING" count={3} />
-            <OrgChartNode title="LOGÍSTICA" count={3} />
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="GERENTE DE PRODUÇÃO"
-            variant="team"
-          />
-          <div className="mt-4 space-y-2">
-            <OrgChartNode title="MEIO AMBIENTE" count={3} />
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="GERENTE COMERCIAL"
-            variant="team"
-          />
-        </div>
-
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="GERENTE DE MEIO AMBIENTE"
-            variant="team"
-          />
-        </div>
-
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="GERENTE JURÍDICO"
-            variant="team"
-          />
-          <div className="mt-4 space-y-2">
-            <OrgChartNode title="JURÍDICO" count={3} />
-            <OrgChartNode title="DEPARTAMENTO PESSOAL" count={5} />
-            <OrgChartNode title="FACILITIES" count={3} />
-            <OrgChartNode title="SESMT" count={3} />
-            <OrgChartNode title="SGQ" count={3} />
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="GERENTE DE GENTE E GESTÃO"
-            variant="team"
-          />
-          <div className="mt-4 space-y-2">
-            <OrgChartNode title="DHO" count={3} />
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <OrgChartNode 
-            title="ANALISTA DE P&D"
-            variant="default"
-          />
-        </div>
+        )}
       </OrgLevel>
     </OrgChart>
   );

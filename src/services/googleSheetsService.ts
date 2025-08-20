@@ -234,6 +234,24 @@ class GoogleSheetsService {
     await this.writeSheet('Configuracoes', values, 'A:B');
   }
 
+  // Load all data and dispatch to context
+  async loadAllData(dispatch: any): Promise<void> {
+    try {
+      const [employees, departments, siteSettings] = await Promise.all([
+        this.getEmployees(),
+        this.getDepartments(),
+        this.getSiteSettings()
+      ]);
+
+      dispatch({ type: 'SET_EMPLOYEES', payload: employees });
+      dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
+      dispatch({ type: 'SET_SITE_SETTINGS', payload: siteSettings });
+    } catch (error) {
+      console.error('Error loading all data:', error);
+      throw error;
+    }
+  }
+
   // Organogramas personalizados
   async getCustomOrgCharts(): Promise<any[]> {
     try {

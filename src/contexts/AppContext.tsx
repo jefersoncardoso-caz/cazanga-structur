@@ -49,6 +49,7 @@ type AppAction =
   | { type: 'SET_VIEW'; payload: 'home' | 'orgchart' | 'admin' }
   | { type: 'SET_SELECTED_DEPARTMENT'; payload: string | undefined }
   | { type: 'UPDATE_SITE_SETTINGS'; payload: Partial<SiteSettings> }
+  | { type: 'SET_SITE_SETTINGS'; payload: SiteSettings }
   | { type: 'ADD_EMPLOYEE'; payload: Employee }
   | { type: 'UPDATE_EMPLOYEE'; payload: { id: string; updates: Partial<Employee> } }
   | { type: 'DELETE_EMPLOYEE'; payload: string }
@@ -87,6 +88,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { 
         ...state, 
         siteSettings: updatedSettings
+      };
+    case 'SET_SITE_SETTINGS':
+      return { 
+        ...state, 
+        siteSettings: action.payload
       };
     case 'ADD_EMPLOYEE':
       return { 
@@ -168,7 +174,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         // Replace sample data with Google Sheets data (even if empty)
         dispatch({ type: 'SET_EMPLOYEES', payload: employees });
         dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
-        dispatch({ type: 'UPDATE_SITE_SETTINGS', payload: siteSettings });
+        dispatch({ type: 'SET_SITE_SETTINGS', payload: siteSettings });
         console.log('Data loaded from Google Sheets successfully');
         
       } catch (error) {
