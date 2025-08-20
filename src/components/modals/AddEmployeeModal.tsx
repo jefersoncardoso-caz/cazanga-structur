@@ -38,22 +38,38 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
     parentId: editingEmployee?.parentId || 'none',
     visible: editingEmployee?.visible !== false
   }));
-  
-  // Auto-reset form when modal opens/closes or editing employee changes
+
+  // Update form data when editingEmployee changes
   useEffect(() => {
-    setFormData({
-      id: editingEmployee?.id || uuidv4(),
-      name: editingEmployee?.name || '',
-      position: editingEmployee?.position || '',
-      department: editingEmployee?.department || '',
-      team: editingEmployee?.team || '',
-      description: editingEmployee?.description || '',
-      photo: editingEmployee?.photo || '',
-      isManager: editingEmployee?.isManager || false,
-      parentId: editingEmployee?.parentId || 'none',
-      visible: editingEmployee?.visible !== false
-    });
-  }, [isOpen, editingEmployee]);
+    if (editingEmployee) {
+      setFormData({
+        id: editingEmployee.id,
+        name: editingEmployee.name,
+        position: editingEmployee.position,
+        department: editingEmployee.department,
+        team: editingEmployee.team || '',
+        description: editingEmployee.description || '',
+        photo: editingEmployee.photo || '',
+        isManager: editingEmployee.isManager || false,
+        parentId: editingEmployee.parentId || 'none',
+        visible: editingEmployee.visible !== false
+      });
+    } else {
+      // Reset form for new employee
+      setFormData({
+        id: uuidv4(),
+        name: '',
+        position: '',
+        department: '',
+        team: '',
+        description: '',
+        photo: '',
+        isManager: false,
+        parentId: 'none',
+        visible: true
+      });
+    }
+  }, [editingEmployee, isOpen]);
 
   const handleInputChange = (field: keyof Employee, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));

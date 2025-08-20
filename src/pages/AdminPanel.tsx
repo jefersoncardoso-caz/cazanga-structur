@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -38,16 +38,43 @@ const AdminPanel = () => {
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [editingOrgChart, setEditingOrgChart] = useState(null);
   
-  // Organogramas padrão
-  const [orgCharts, setOrgCharts] = useState<Array<{id: string; name: string; type: string; description?: string}>>([
-    { id: '1', name: 'Macro 2025', type: 'macro', description: 'Organograma macro da empresa' },
-    { id: '2', name: 'Gente e Gestão', type: 'departamental', description: 'Organograma do departamento de pessoas' },
-    { id: '3', name: 'DHO', type: 'departamental', description: 'Organograma DHO' },
-    { id: '4', name: 'Departamento Pessoal', type: 'departamental', description: 'Organograma DP' },
-    { id: '5', name: 'Facilities', type: 'departamental', description: 'Organograma Facilities' },
-    { id: '6', name: 'SESMT', type: 'departamental', description: 'Organograma SESMT' },
-    { id: '7', name: 'SGQ', type: 'departamental', description: 'Organograma SGQ' }
-  ]);
+  // Organogramas carregados do Google Sheets
+  const [orgCharts, setOrgCharts] = useState<Array<{id: string; name: string; type: string; description?: string}>>([]);
+  
+  // Carregar organogramas do Google Sheets
+  useEffect(() => {
+    const loadOrgCharts = async () => {
+      try {
+        const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
+        if (isConnected) {
+          const customOrgCharts = await googleSheetsService.getCustomOrgCharts();
+          setOrgCharts(customOrgCharts);
+        } else {
+          // Organogramas padrão se não conectado
+          setOrgCharts([
+            { id: '1', name: 'Macro 2025', type: 'macro', description: 'Organograma macro da empresa' },
+            { id: '2', name: 'Gente e Gestão', type: 'departamental', description: 'Organograma do departamento de pessoas' },
+            { id: '3', name: 'DHO', type: 'departamental', description: 'Organograma DHO' },
+            { id: '4', name: 'Departamento Pessoal', type: 'departamental', description: 'Organograma DP' },
+            { id: '5', name: 'Facilities', type: 'departamental', description: 'Organograma Facilities' },
+            { id: '6', name: 'SESMT', type: 'departamental', description: 'Organograma SESMT' },
+            { id: '7', name: 'SGQ', type: 'departamental', description: 'Organograma SGQ' }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error loading org charts:', error);
+        // Usar organogramas padrão em caso de erro
+        setOrgCharts([
+          { id: '1', name: 'Macro 2025', type: 'macro', description: 'Organograma macro da empresa' },
+          { id: '2', name: 'Gente e Gestão', type: 'departamental', description: 'Organograma do departamento de pessoas' }
+        ]);
+      }
+    };
+
+    if (isAuthenticated) {
+      loadOrgCharts();
+    }
+  }, [isAuthenticated]);
 
   const handleLogin = () => {
     if (password === 'cazanga@2025') {
@@ -426,6 +453,30 @@ const AdminPanel = () => {
                       payload: { companyName: e.target.value } 
                     })}
                   />
+                </div>
+                
+                <div>
+                  <Label>Logo da Empresa</Label>
+                  <Input 
+                    value={state.siteSettings.logo || ''} 
+                    onChange={(e) => dispatch({ 
+                      type: 'UPDATE_SITE_SETTINGS', 
+                      payload: { logo: e.target.value } 
+                    })}
+                    placeholder="URL do logo da empresa"
+                  />
+                  {state.siteSettings.logo && (
+                    <div className="mt-2">
+                      <img 
+                        src={state.siteSettings.logo} 
+                        alt="Logo preview" 
+                        className="h-16 w-auto object-contain border rounded"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -844,6 +895,7 @@ const AdminPanel = () => {
           setAddEmployeeModalOpen(false);
           setEditingEmployee(null);
         }}
+        editingEmployee={editingEmployee}
       />
       <AddDepartmentModal 
         isOpen={addDepartmentModalOpen} 
@@ -859,7 +911,22 @@ const AdminPanel = () => {
       />
       <AddOrgChartModal 
         isOpen={addOrgChartModalOpen} 
-        onClose={() => setAddOrgChartModalOpen(false)} 
+        onClose={() => setAddOrgChartModalOpen(false)}
+        onSuccess={() => {
+          // Recarregar organogramas após adicionar um novo
+          const loadOrgCharts = async () => {
+            try {
+              const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
+              if (isConnected) {
+                const customOrgCharts = await googleSheetsService.getCustomOrgCharts();
+                setOrgCharts(customOrgCharts);
+              }
+            } catch (error) {
+              console.error('Error reloading org charts:', error);
+            }
+          };
+          loadOrgCharts();
+        }}
       />
       <EditOrgChartModal 
         isOpen={editOrgChartModalOpen} 
