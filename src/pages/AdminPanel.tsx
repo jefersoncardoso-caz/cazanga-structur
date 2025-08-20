@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Users, Settings, FileText, Palette, Link2, Database } from 'lucide-react';
+import { ArrowLeft, Users, Settings, FileText, Palette, Link2, Database, Sheet } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from '@/hooks/use-toast';
+import GoogleSheetsConfig from '@/components/admin/GoogleSheetsConfig';
 
 const AdminPanel = () => {
   const { state, dispatch } = useApp();
@@ -83,6 +84,7 @@ const AdminPanel = () => {
     { id: 'files', label: 'Arquivos', icon: FileText },
     { id: 'design', label: 'Identidade Visual', icon: Palette },
     { id: 'pages', label: 'Menu Lateral', icon: Link2 },
+    { id: 'googlesheets', label: 'Google Sheets', icon: Sheet },
     { id: 'integrations', label: 'Integrações', icon: Database },
     { id: 'settings', label: 'Configurações', icon: Settings }
   ];
@@ -466,6 +468,9 @@ const AdminPanel = () => {
             </Card>
           </div>
         );
+
+      case 'googlesheets':
+        return <GoogleSheetsConfig />;
 
       case 'integrations':
         return (
