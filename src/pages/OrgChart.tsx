@@ -12,7 +12,7 @@ import TeamOrgChart from '@/components/orgcharts/TeamOrgChart';
 type OrgChartType = 'macro' | 'organograma-gente-gestao' | 'dho' | 'dp' | 'facilities' | 'sesmt' | 'sgq';
 
 const OrgChartPage = () => {
-  const { dispatch } = useApp();
+  const { state, dispatch } = useApp();
   const [selectedChart, setSelectedChart] = useState<OrgChartType>('macro');
 
   const handleBack = () => {
@@ -70,7 +70,17 @@ const OrgChartPage = () => {
                 Início
               </Button>
             </div>
-            <h1 className="text-xl font-bold">Organogramas Cazanga</h1>
+            <div className="flex items-center gap-3">
+              {state.siteSettings.logo ? (
+                <img 
+                  src={state.siteSettings.logo} 
+                  alt={`Logo ${state.siteSettings.companyName}`}
+                  className="h-8 w-auto object-contain"
+                />
+              ) : (
+                <h1 className="text-xl font-bold">Organogramas {state.siteSettings.companyName}</h1>
+              )}
+            </div>
           </div>
         </div>
       </header>

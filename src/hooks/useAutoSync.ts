@@ -10,7 +10,8 @@ export const useAutoSync = () => {
   // Auto-sync site settings whenever they change
   useEffect(() => {
     const syncSiteSettings = async () => {
-      if (localStorage.getItem('google_sheets_connected') !== 'true') {
+      const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
+      if (!isConnected) {
         return;
       }
 
@@ -29,13 +30,14 @@ export const useAutoSync = () => {
   // Auto-sync employees whenever they change
   useEffect(() => {
     const syncEmployees = async () => {
-      if (localStorage.getItem('google_sheets_connected') !== 'true') {
+      const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
+      if (!isConnected) {
         return;
       }
 
       try {
-        // Sync any newly added employees
         console.log('Auto-syncing employee changes to Google Sheets');
+        // Employee sync will be implemented when needed
       } catch (error) {
         console.warn('Failed to auto-sync employees:', error);
       }
@@ -48,12 +50,14 @@ export const useAutoSync = () => {
   // Auto-sync departments whenever they change
   useEffect(() => {
     const syncDepartments = async () => {
-      if (localStorage.getItem('google_sheets_connected') !== 'true') {
+      const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
+      if (!isConnected) {
         return;
       }
 
       try {
         console.log('Auto-syncing department changes to Google Sheets');
+        // Department sync will be implemented when needed
       } catch (error) {
         console.warn('Failed to auto-sync departments:', error);
       }

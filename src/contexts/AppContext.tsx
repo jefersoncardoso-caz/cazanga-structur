@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { googleSheetsService } from '@/services/googleSheetsService';
-import { sampleEmployees, sampleDepartments, sampleSiteSettings } from '@/data/sampleData';
 
 // Types
 export interface Employee {
@@ -61,9 +60,15 @@ type AppAction =
 
 // Initial state
 const initialState: AppState = {
-  siteSettings: sampleSiteSettings,
-  employees: sampleEmployees,
-  departments: sampleDepartments,
+  siteSettings: {
+    companyName: 'Cazanga',
+    primaryColor: '#1f4e78',
+    secondaryColor: '#548235',
+    introText: 'Explore nossa estrutura organizacional de forma interativa e detalhada.',
+    carouselImages: []
+  },
+  employees: [],
+  departments: [],
   isAdmin: false,
   currentView: 'home'
 };
@@ -156,30 +161,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const loadInitialData = async () => {
       try {
         // Check if Google Sheets is properly configured
-        const spreadsheetId = localStorage.getItem('google_sheets_spreadsheet_id');
-        const apiKey = localStorage.getItem('google_api_key');
         const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
         
-        if (!spreadsheetId || !apiKey || !isConnected) {
-          console.log('Google Sheets not properly configured, using sample data');
-          return; // Keep sample data from initialState
+        if (!isConnected) {
+          console.log('Google Sheets not connected, keeping empty initial data');
+          return; // Keep empty initial data
         }
 
-        const [employees, departments, siteSettings] = await Promise.all([
-          googleSheetsService.getEmployees(),
-          googleSheetsService.getDepartments(), 
-          googleSheetsService.getSiteSettings()
-        ]);
-
-        // Replace sample data with Google Sheets data (even if empty)
-        dispatch({ type: 'SET_EMPLOYEES', payload: employees });
-        dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
-        dispatch({ type: 'SET_SITE_SETTINGS', payload: siteSettings });
+        await googleSheetsService.loadAllData(dispatch);
         console.log('Data loaded from Google Sheets successfully');
         
       } catch (error) {
         console.error('Failed to load initial data from Google Sheets:', error);
-        // Keep sample data if Google Sheets fails
+        // Keep initial empty data if Google Sheets fails
       }
     };
 

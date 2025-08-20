@@ -3,13 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Users, Settings, FileText, Palette, Link2, Database, Sheet, Plus, Folder, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Users, Settings, FileText, Palette, Link2, Database, Sheet, Plus, Folder, CheckSquare, Building2 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from '@/hooks/use-toast';
 import GoogleSheetsConfig from '@/components/admin/GoogleSheetsConfig';
 import GoogleDriveIntegration from '@/components/admin/GoogleDriveIntegration';
 import StructureValidator from '@/components/admin/StructureValidator';
 import AutoSyncManager from '@/components/admin/AutoSyncManager';
+import AdminLogin from '@/components/admin/AdminLogin';
 import AddEmployeeModal from '@/components/modals/AddEmployeeModal';
 import AddDepartmentModal from '@/components/modals/AddDepartmentModal';
 import EditDepartmentModal from '@/components/modals/EditDepartmentModal';
@@ -22,7 +23,6 @@ import { useAutoSync } from '@/hooks/useAutoSync';
 
 const AdminPanel = () => {
   const { state, dispatch } = useApp();
-  const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const { loadAllData } = useGoogleSheets();
@@ -77,66 +77,18 @@ const AdminPanel = () => {
   }, [isAuthenticated]);
 
   const handleLogin = () => {
-    if (password === 'cazanga@2025') {
-      setIsAuthenticated(true);
-      dispatch({ type: 'SET_ADMIN', payload: true });
-      toast({
-        title: "Login realizado com sucesso",
-        description: "Bem-vindo ao painel administrativo"
-      });
-    } else {
-      toast({
-        title: "Senha incorreta",
-        description: "Tente novamente",
-        variant: "destructive"
-      });
-    }
+    setIsAuthenticated(true);
+    dispatch({ type: 'SET_ADMIN', payload: true });
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setPassword('');
     dispatch({ type: 'SET_ADMIN', payload: false });
     dispatch({ type: 'SET_VIEW', payload: 'home' });
   };
 
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md p-8 shadow-lg">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-primary mb-2">Painel Administrativo</h1>
-            <p className="text-muted-foreground">Digite a senha para acessar</p>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                placeholder="Digite a senha"
-              />
-            </div>
-            
-            <Button onClick={handleLogin} className="w-full">
-              Entrar
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              onClick={() => dispatch({ type: 'SET_VIEW', payload: 'home' })}
-              className="w-full"
-            >
-              Voltar ao Site
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
+    return <AdminLogin onLogin={handleLogin} />;
   }
 
   // Menu reorganizado em grupos lógicos
@@ -836,7 +788,21 @@ const AdminPanel = () => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold">Painel Administrativo - {state.siteSettings.companyName}</h1>
+              {state.siteSettings.logo ? (
+                <>
+                  <img 
+                    src={state.siteSettings.logo} 
+                    alt={`Logo ${state.siteSettings.companyName}`}
+                    className="h-8 w-auto object-contain"
+                  />
+                  <h1 className="text-xl font-bold">Painel Administrativo</h1>
+                </>
+              ) : (
+                <>
+                  <Building2 className="w-6 h-6" />
+                  <h1 className="text-xl font-bold">Painel Administrativo - {state.siteSettings.companyName}</h1>
+                </>
+              )}
             </div>
             <Button 
               variant="ghost" 

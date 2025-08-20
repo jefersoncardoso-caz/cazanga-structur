@@ -18,8 +18,18 @@ const Home = () => {
       <header className="bg-primary text-primary-foreground py-6 shadow-lg">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center gap-3">
-            <Building2 className="w-8 h-8" />
-            <h1 className="text-2xl font-bold">{state.siteSettings.companyName}</h1>
+            {state.siteSettings.logo ? (
+              <img 
+                src={state.siteSettings.logo} 
+                alt={`Logo ${state.siteSettings.companyName}`}
+                className="h-12 w-auto object-contain"
+              />
+            ) : (
+              <>
+                <Building2 className="w-8 h-8" />
+                <h1 className="text-2xl font-bold">{state.siteSettings.companyName}</h1>
+              </>
+            )}
           </div>
         </div>
       </header>

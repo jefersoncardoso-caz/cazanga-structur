@@ -150,17 +150,72 @@ const StructureValidator: React.FC = () => {
     }
   };
 
-  // Validação automática ao carregar o componente
-  useEffect(() => {
-    const autoValidate = async () => {
-      const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
-      if (isConnected) {
-        await validateStructure();
+  const fixStructureIssues = async () => {
+    setLoading(true);
+    const results: ValidationResult[] = [];
+
+    try {
+      // Create missing sheets with headers
+      const sheetsToCreate = requiredSheets.filter(sheet => {
+        const result = validationResults.find(r => r.sheet === sheet.name);
+        return result && result.status === 'error' && result.message.includes('vazia ou não encontrada');
+      });
+
+      for (const sheetInfo of sheetsToCreate) {
+        try {
+          const headerValues = [sheetInfo.columns];
+          await googleSheetsService.writeSheet(sheetInfo.name, headerValues, 'A:Z');
+          results.push({
+            sheet: sheetInfo.name,
+            status: 'success',
+            message: 'Aba criada com sucesso',
+            details: `Aba "${sheetInfo.name}" foi criada com os cabeçalhos corretos`
+          });
+        } catch (error) {
+          results.push({
+            sheet: sheetInfo.name,
+            status: 'error',
+            message: 'Erro ao criar aba',
+            details: `Falha ao criar a aba "${sheetInfo.name}": ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+          });
+        }
       }
-    };
-    
-    autoValidate();
-  }, []);
+
+      // Show results
+      const successCount = results.filter(r => r.status === 'success').length;
+      const errorCount = results.filter(r => r.status === 'error').length;
+
+      if (successCount > 0) {
+        toast({
+          title: "Estrutura corrigida",
+          description: `${successCount} ${successCount === 1 ? 'aba foi criada' : 'abas foram criadas'} com sucesso${errorCount > 0 ? `, ${errorCount} falhas` : ''}`,
+          variant: errorCount > 0 ? "default" : "default"
+        });
+      }
+
+      if (errorCount > 0 && successCount === 0) {
+        toast({
+          title: "Erro na correção",
+          description: `Falha ao corrigir ${errorCount} ${errorCount === 1 ? 'aba' : 'abas'}`,
+          variant: "destructive"
+        });
+      }
+
+      // Re-validate after fixing
+      setTimeout(() => {
+        validateStructure();
+      }, 1000);
+
+    } catch (error) {
+      toast({
+        title: "Erro na correção",
+        description: "Não foi possível corrigir a estrutura",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusIcon = (status: ValidationResult['status']) => {
     switch (status) {
@@ -205,10 +260,23 @@ const StructureValidator: React.FC = () => {
                 </Badge>
               )}
             </div>
-            <Button onClick={validateStructure} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Validando...' : 'Validar Estrutura'}
-            </Button>
+            <div className="flex gap-2">
+              {validationResults.some(r => r.status === 'error' && r.message.includes('vazia ou não encontrada')) && (
+                <Button 
+                  onClick={fixStructureIssues} 
+                  disabled={loading}
+                  variant="secondary"
+                  size="sm"
+                >
+                  <CheckCircle className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                  {loading ? 'Corrigindo...' : 'Corrigir Problemas'}
+                </Button>
+              )}
+              <Button onClick={validateStructure} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Validando...' : 'Validar Estrutura'}
+              </Button>
+            </div>
           </div>
 
           {validationResults.length > 0 && (
