@@ -35,7 +35,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
     description: editingEmployee?.description || '',
     photo: editingEmployee?.photo || '',
     isManager: editingEmployee?.isManager || false,
-    parentId: editingEmployee?.parentId || '',
+    parentId: editingEmployee?.parentId || 'none',
     visible: editingEmployee?.visible !== false
   }));
 
@@ -64,7 +64,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         description: formData.description,
         photo: formData.photo,
         isManager: formData.isManager,
-        parentId: formData.parentId,
+        parentId: formData.parentId === 'none' ? undefined : formData.parentId,
         visible: formData.visible
       };
 
@@ -201,7 +201,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                   <SelectValue placeholder="Selecione o superior" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum superior</SelectItem>
+                  <SelectItem value="none">Nenhum superior</SelectItem>
                   {availableManagers.map(manager => (
                     <SelectItem key={manager.id} value={manager.id}>
                       {manager.name} - {manager.position}
