@@ -1,13 +1,22 @@
 import { Employee, Department, SiteSettings } from '@/contexts/AppContext';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321';
+const SUPABASE_URL = 'https://tefjkdgyniebwanxyayg.supabase.co';
 
 class GoogleSheetsService {
   private baseUrl = `${SUPABASE_URL}/functions/v1/google-sheets`;
 
+  private getSpreadsheetId(): string {
+    return localStorage.getItem('google_sheets_spreadsheet_id') || '';
+  }
+
   async readSheet(sheetName: string): Promise<string[][]> {
     try {
-      const response = await fetch(`${this.baseUrl}?action=read&sheet=${sheetName}`);
+      const spreadsheetId = this.getSpreadsheetId();
+      if (!spreadsheetId) {
+        throw new Error('Spreadsheet ID not configured. Please configure Google Sheets first.');
+      }
+      
+      const response = await fetch(`${this.baseUrl}?action=read&sheet=${sheetName}&spreadsheetId=${spreadsheetId}`);
       const data = await response.json();
       
       if (!response.ok) {
@@ -23,7 +32,12 @@ class GoogleSheetsService {
 
   async writeSheet(sheetName: string, values: string[][], range: string): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}?action=write&sheet=${sheetName}`, {
+      const spreadsheetId = this.getSpreadsheetId();
+      if (!spreadsheetId) {
+        throw new Error('Spreadsheet ID not configured. Please configure Google Sheets first.');
+      }
+      
+      const response = await fetch(`${this.baseUrl}?action=write&sheet=${sheetName}&spreadsheetId=${spreadsheetId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,7 +57,12 @@ class GoogleSheetsService {
 
   async appendSheet(sheetName: string, values: string[][]): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}?action=append&sheet=${sheetName}`, {
+      const spreadsheetId = this.getSpreadsheetId();
+      if (!spreadsheetId) {
+        throw new Error('Spreadsheet ID not configured. Please configure Google Sheets first.');
+      }
+      
+      const response = await fetch(`${this.baseUrl}?action=append&sheet=${sheetName}&spreadsheetId=${spreadsheetId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -20,22 +20,23 @@ serve(async (req) => {
     const url = new URL(req.url)
     const action = url.searchParams.get('action')
     const sheet = url.searchParams.get('sheet')
+    const spreadsheetId = url.searchParams.get('spreadsheetId') || SPREADSHEET_ID
 
-    if (!GOOGLE_SHEETS_API_KEY || !SPREADSHEET_ID) {
+    if (!GOOGLE_SHEETS_API_KEY || !spreadsheetId) {
       throw new Error('Google Sheets API key or Spreadsheet ID not configured')
     }
 
     switch (action) {
       case 'read':
-        return await readSheet(sheet || 'Funcionarios')
+        return await readSheet(sheet || 'Funcionarios', spreadsheetId)
       
       case 'write':
         const body = await req.json()
-        return await writeSheet(sheet || 'Funcionarios', body.values, body.range)
+        return await writeSheet(sheet || 'Funcionarios', body.values, body.range, spreadsheetId)
       
       case 'append':
         const appendBody = await req.json()
-        return await appendSheet(sheet || 'Funcionarios', appendBody.values)
+        return await appendSheet(sheet || 'Funcionarios', appendBody.values, spreadsheetId)
       
       default:
         throw new Error('Invalid action')
@@ -52,15 +53,15 @@ serve(async (req) => {
   }
 })
 
-async function readSheet(sheetName: string) {
+async function readSheet(sheetName: string, spreadsheetId: string) {
   const range = `${sheetName}!A:Z`
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?key=${GOOGLE_SHEETS_API_KEY}`
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?key=${GOOGLE_SHEETS_API_KEY}`
   
   const response = await fetch(url)
   const data: SheetData = await response.json()
   
   if (!response.ok) {
-    throw new Error(`Google Sheets API error: ${response.status}`)
+    throw new Error(`Google Sheets API error: ${response.status} - ${JSON.stringify(data)}`)
   }
 
   return new Response(
@@ -71,8 +72,8 @@ async function readSheet(sheetName: string) {
   )
 }
 
-async function writeSheet(sheetName: string, values: string[][], range: string) {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${sheetName}!${range}?valueInputOption=RAW&key=${GOOGLE_SHEETS_API_KEY}`
+async function writeSheet(sheetName: string, values: string[][], range: string, spreadsheetId: string) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheetName}!${range}?valueInputOption=RAW&key=${GOOGLE_SHEETS_API_KEY}`
   
   const response = await fetch(url, {
     method: 'PUT',
@@ -87,7 +88,7 @@ async function writeSheet(sheetName: string, values: string[][], range: string) 
   const data = await response.json()
   
   if (!response.ok) {
-    throw new Error(`Google Sheets API error: ${response.status}`)
+    throw new Error(`Google Sheets API error: ${response.status} - ${JSON.stringify(data)}`)
   }
 
   return new Response(
@@ -98,9 +99,9 @@ async function writeSheet(sheetName: string, values: string[][], range: string) 
   )
 }
 
-async function appendSheet(sheetName: string, values: string[][]) {
+async function appendSheet(sheetName: string, values: string[][], spreadsheetId: string) {
   const range = `${sheetName}!A:Z`
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}:append?valueInputOption=RAW&key=${GOOGLE_SHEETS_API_KEY}`
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}:append?valueInputOption=RAW&key=${GOOGLE_SHEETS_API_KEY}`
   
   const response = await fetch(url, {
     method: 'POST',
@@ -115,7 +116,7 @@ async function appendSheet(sheetName: string, values: string[][]) {
   const data = await response.json()
   
   if (!response.ok) {
-    throw new Error(`Google Sheets API error: ${response.status}`)
+    throw new Error(`Google Sheets API error: ${response.status} - ${JSON.stringify(data)}`)
   }
 
   return new Response(

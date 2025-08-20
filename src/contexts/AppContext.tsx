@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
+import { googleSheetsService } from '@/services/googleSheetsService';
 
 // Types
 export interface Employee {
@@ -141,6 +142,28 @@ const AppContext = createContext<{
 // Provider
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  // Load data from Google Sheets on initialization
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const [employees, departments, siteSettings] = await Promise.all([
+          googleSheetsService.getEmployees(),
+          googleSheetsService.getDepartments(), 
+          googleSheetsService.getSiteSettings()
+        ]);
+
+        dispatch({ type: 'SET_EMPLOYEES', payload: employees });
+        dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
+        dispatch({ type: 'UPDATE_SITE_SETTINGS', payload: siteSettings });
+      } catch (error) {
+        console.error('Failed to load initial data from Google Sheets:', error);
+        // Keep default data if Google Sheets fails
+      }
+    };
+
+    loadInitialData();
+  }, []);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

@@ -20,7 +20,9 @@ import {
 
 const GoogleSheetsConfig: React.FC = () => {
   const { loading, connected, testConnection, loadAllData, syncToSheets } = useGoogleSheets();
-  const [spreadsheetUrl, setSpreadsheetUrl] = useState('');
+  const [spreadsheetUrl, setSpreadsheetUrl] = useState(() => {
+    return localStorage.getItem('google_sheets_url') || '';
+  });
 
   const extractSpreadsheetId = (url: string) => {
     const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
@@ -31,7 +33,14 @@ const GoogleSheetsConfig: React.FC = () => {
     const id = extractSpreadsheetId(spreadsheetUrl);
     if (id) {
       console.log('Spreadsheet ID:', id);
-      // Here you would typically save this to your environment or state
+      // Save to localStorage for immediate use
+      localStorage.setItem('google_sheets_spreadsheet_id', id);
+      localStorage.setItem('google_sheets_url', spreadsheetUrl);
+      
+      // Test connection after saving
+      testConnection();
+    } else {
+      alert('Por favor, insira uma URL válida do Google Sheets');
     }
   };
 
