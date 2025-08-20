@@ -23,25 +23,61 @@ const GoogleSheetsConfig: React.FC = () => {
   const [spreadsheetUrl, setSpreadsheetUrl] = useState(() => {
     return localStorage.getItem('google_sheets_url') || '';
   });
+  const [apiKey, setApiKey] = useState(() => {
+    return localStorage.getItem('google_api_key') || '';
+  });
+  const [driveFolder, setDriveFolder] = useState(() => {
+    return localStorage.getItem('google_drive_folder') || '';
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(() => {
+    const saved = localStorage.getItem('google_config_last_saved');
+    return saved ? new Date(saved) : null;
+  });
 
   const extractSpreadsheetId = (url: string) => {
     const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
     return match ? match[1] : '';
   };
 
-  const handleUrlSubmit = () => {
+  const handleSaveConfig = async () => {
     const id = extractSpreadsheetId(spreadsheetUrl);
-    if (id) {
-      console.log('Spreadsheet ID:', id);
-      // Save to localStorage for immediate use
+    
+    if (!spreadsheetUrl || !id) {
+      alert('Por favor, insira uma URL válida do Google Sheets');
+      return;
+    }
+    
+    if (!apiKey) {
+      alert('Por favor, insira a API Key do Google');
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      // Save all configurations to localStorage
       localStorage.setItem('google_sheets_spreadsheet_id', id);
       localStorage.setItem('google_sheets_url', spreadsheetUrl);
+      localStorage.setItem('google_api_key', apiKey);
+      localStorage.setItem('google_drive_folder', driveFolder);
+      localStorage.setItem('google_config_last_saved', new Date().toISOString());
+      
+      setLastSaved(new Date());
       
       // Test connection after saving
-      testConnection();
-    } else {
-      alert('Por favor, insira uma URL válida do Google Sheets');
+      await testConnection();
+      
+      alert('Configurações salvas com sucesso!');
+    } catch (error) {
+      alert('Erro ao salvar configurações');
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const isConfigComplete = () => {
+    return spreadsheetUrl && apiKey && extractSpreadsheetId(spreadsheetUrl);
   };
 
   return (
@@ -62,7 +98,15 @@ const GoogleSheetsConfig: React.FC = () => {
               {connected ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
               {connected ? 'Conectado' : 'Desconectado'}
             </Badge>
-            <Button onClick={testConnection} disabled={loading} size="sm">
+            <Badge variant={isConfigComplete() ? "default" : "outline"} className="flex items-center gap-1">
+              {isConfigComplete() ? 'Configurado' : 'Não Configurado'}
+            </Badge>
+            {lastSaved && (
+              <Badge variant="outline" className="text-xs">
+                Salvo: {lastSaved.toLocaleString()}
+              </Badge>
+            )}
+            <Button onClick={testConnection} disabled={loading || !isConfigComplete()} size="sm">
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Testar Conexão
             </Button>
@@ -79,18 +123,46 @@ const GoogleSheetsConfig: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="spreadsheet-url">URL da Planilha Google Sheets</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      id="spreadsheet-url"
-                      placeholder="https://docs.google.com/spreadsheets/d/..."
-                      value={spreadsheetUrl}
-                      onChange={(e) => setSpreadsheetUrl(e.target.value)}
-                    />
-                    <Button onClick={handleUrlSubmit} size="sm">
-                      Configurar
-                    </Button>
-                  </div>
+                  <Input
+                    id="spreadsheet-url"
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    value={spreadsheetUrl}
+                    onChange={(e) => setSpreadsheetUrl(e.target.value)}
+                    className="mt-1"
+                  />
                 </div>
+
+                <div>
+                  <Label htmlFor="api-key">API Key do Google</Label>
+                  <Input
+                    id="api-key"
+                    type="password"
+                    placeholder="Insira sua API Key do Google"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="drive-folder">Pasta de Destino do Google Drive (Opcional)</Label>
+                  <Input
+                    id="drive-folder"
+                    placeholder="ID da pasta do Google Drive"
+                    value={driveFolder}
+                    onChange={(e) => setDriveFolder(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleSaveConfig} 
+                  disabled={isSaving || !spreadsheetUrl || !apiKey}
+                  className="w-full"
+                >
+                  {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Salvar Configurações
+                </Button>
 
                 <Alert>
                   <Database className="h-4 w-4" />
@@ -99,7 +171,9 @@ const GoogleSheetsConfig: React.FC = () => {
                     1. Crie uma planilha no Google Sheets<br />
                     2. Configure as abas conforme a estrutura mostrada na aba "Estrutura"<br />
                     3. Torne a planilha pública para leitura<br />
-                    4. Cole a URL completa da planilha acima
+                    4. Cole a URL completa da planilha acima<br />
+                    5. Insira sua API Key do Google (necessária para funcionalidades avançadas)<br />
+                    6. Opcionalmente, configure uma pasta do Google Drive para arquivos
                   </AlertDescription>
                 </Alert>
               </div>
@@ -195,7 +269,7 @@ const GoogleSheetsConfig: React.FC = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Button onClick={loadAllData} disabled={loading || !connected} className="w-full">
+                      <Button onClick={loadAllData} disabled={loading || !connected || !isConfigComplete()} className="w-full">
                         {loading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                         Importar Dados
                       </Button>
@@ -213,7 +287,7 @@ const GoogleSheetsConfig: React.FC = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Button onClick={syncToSheets} disabled={loading || !connected} className="w-full">
+                      <Button onClick={syncToSheets} disabled={loading || !connected || !isConfigComplete()} className="w-full">
                         {loading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                         Exportar Dados
                       </Button>

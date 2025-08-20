@@ -142,10 +142,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        // Check if Google Sheets is configured
+        // Check if Google Sheets is properly configured
         const spreadsheetId = localStorage.getItem('google_sheets_spreadsheet_id');
-        if (!spreadsheetId) {
-          console.log('Google Sheets not configured, using sample data');
+        const apiKey = localStorage.getItem('google_api_key');
+        const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
+        
+        if (!spreadsheetId || !apiKey || !isConnected) {
+          console.log('Google Sheets not properly configured, using sample data');
           return; // Keep sample data from initialState
         }
 
@@ -155,13 +158,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           googleSheetsService.getSiteSettings()
         ]);
 
-        // Only update with Google Sheets data if we got valid data
-        if (employees.length > 0 || departments.length > 0) {
-          dispatch({ type: 'SET_EMPLOYEES', payload: employees });
-          dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
-          dispatch({ type: 'UPDATE_SITE_SETTINGS', payload: siteSettings });
-          console.log('Data loaded from Google Sheets successfully');
-        }
+        // Replace sample data with Google Sheets data (even if empty)
+        dispatch({ type: 'SET_EMPLOYEES', payload: employees });
+        dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
+        dispatch({ type: 'UPDATE_SITE_SETTINGS', payload: siteSettings });
+        console.log('Data loaded from Google Sheets successfully');
+        
       } catch (error) {
         console.error('Failed to load initial data from Google Sheets:', error);
         // Keep sample data if Google Sheets fails
