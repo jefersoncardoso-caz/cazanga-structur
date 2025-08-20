@@ -56,7 +56,6 @@ export const CarouselBasic: React.FC<CarouselBasicProps> = ({
         {/* Overlay Content */}
         <div className="absolute bottom-4 left-4 text-white">
           <p className="text-lg font-semibold">Cazanga</p>
-          <p className="text-sm opacity-90">Excelência em gestão empresarial</p>
         </div>
       </div>
 

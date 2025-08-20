@@ -62,12 +62,25 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
 
       // Sincronizar com Google Sheets se configurado
       if (localStorage.getItem('google_sheets_connected') === 'true') {
-        // Implementar atualização no Google Sheets
-        // Por enquanto vamos apenas mostrar sucesso
-        toast({
-          title: "Departamento atualizado",
-          description: `${formData.name} foi atualizado com sucesso`
-        });
+        try {
+          await googleSheetsService.updateDepartment({
+            id: updatedDepartment.id,
+            name: updatedDepartment.name,
+            color: updatedDepartment.color,
+            visible: updatedDepartment.visible,
+            employees: updatedDepartment.employees
+          });
+          toast({
+            title: "Departamento atualizado",
+            description: `${formData.name} foi atualizado com sucesso no Google Sheets`
+          });
+        } catch (error) {
+          toast({
+            title: "Erro na sincronização",
+            description: "Departamento atualizado localmente, mas falha no Google Sheets",
+            variant: "destructive"
+          });
+        }
       } else {
         toast({
           title: "Departamento atualizado localmente",
@@ -101,11 +114,19 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
 
       // Sincronizar com Google Sheets se configurado
       if (localStorage.getItem('google_sheets_connected') === 'true') {
-        // Implementar remoção no Google Sheets
-        toast({
-          title: "Departamento removido",
-          description: `${department.name} foi removido com sucesso`
-        });
+        try {
+          await googleSheetsService.deleteDepartment(department.id);
+          toast({
+            title: "Departamento removido",
+            description: `${department.name} foi removido com sucesso do Google Sheets`
+          });
+        } catch (error) {
+          toast({
+            title: "Erro na sincronização",
+            description: "Departamento removido localmente, mas falha no Google Sheets",
+            variant: "destructive"
+          });
+        }
       } else {
         toast({
           title: "Departamento removido localmente",

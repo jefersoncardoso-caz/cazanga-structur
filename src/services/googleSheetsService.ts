@@ -172,6 +172,41 @@ class GoogleSheetsService {
     await this.appendSheet('Departamentos', values);
   }
 
+  async updateDepartment(department: Department): Promise<void> {
+    try {
+      const data = await this.readSheet('Departamentos');
+      if (data.length <= 1) throw new Error('Departamentos sheet is empty');
+
+      const rowIndex = data.findIndex((row, index) => index > 0 && row[0] === department.id);
+      if (rowIndex === -1) throw new Error('Department not found');
+
+      const updatedRow = [
+        department.id,
+        department.name,
+        department.color,
+        department.visible !== false ? 'true' : 'false'
+      ];
+
+      await this.writeSheet('Departamentos', [updatedRow], `A${rowIndex + 1}:D${rowIndex + 1}`);
+    } catch (error) {
+      console.error('Error updating department:', error);
+      throw error;
+    }
+  }
+
+  async deleteDepartment(departmentId: string): Promise<void> {
+    try {
+      const data = await this.readSheet('Departamentos');
+      if (data.length <= 1) throw new Error('Departamentos sheet is empty');
+
+      const filteredData = data.filter((row, index) => index === 0 || row[0] !== departmentId);
+      await this.writeSheet('Departamentos', filteredData, 'A:Z');
+    } catch (error) {
+      console.error('Error deleting department:', error);
+      throw error;
+    }
+  }
+
   // Configurações do Site
   async getSiteSettings(): Promise<SiteSettings> {
     try {
@@ -222,7 +257,7 @@ class GoogleSheetsService {
     const updatedSettings = { ...currentSettings, ...settings };
     
     const values = [
-      ['Setting', 'Value'],
+      ['Configuração', 'Valor'],
       ['companyName', updatedSettings.companyName],
       ['primaryColor', updatedSettings.primaryColor],
       ['secondaryColor', updatedSettings.secondaryColor],

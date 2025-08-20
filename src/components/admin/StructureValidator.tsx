@@ -161,6 +161,12 @@ const StructureValidator: React.FC = () => {
         return result && result.status === 'error' && result.message.includes('vazia ou não encontrada');
       });
 
+      // Fix missing columns in existing sheets
+      const sheetsToFix = requiredSheets.filter(sheet => {
+        const result = validationResults.find(r => r.sheet === sheet.name);
+        return result && result.status === 'warning' && result.message.includes('Colunas faltando');
+      });
+
       for (const sheetInfo of sheetsToCreate) {
         try {
           const headerValues = [sheetInfo.columns];
@@ -181,6 +187,42 @@ const StructureValidator: React.FC = () => {
         }
       }
 
+      for (const sheetInfo of sheetsToFix) {
+        try {
+          const currentData = await googleSheetsService.readSheet(sheetInfo.name);
+          const currentHeaders = currentData.length > 0 ? currentData[0] : [];
+          const dataRows = currentData.slice(1);
+          
+          // Create new header row with all required columns
+          const newHeaders = sheetInfo.columns;
+          const updatedData = [newHeaders];
+          
+          // Map existing data to new structure
+          dataRows.forEach(row => {
+            const newRow = sheetInfo.columns.map(col => {
+              const oldIndex = currentHeaders.indexOf(col);
+              return oldIndex !== -1 ? (row[oldIndex] || '') : '';
+            });
+            updatedData.push(newRow);
+          });
+
+          await googleSheetsService.writeSheet(sheetInfo.name, updatedData, 'A:Z');
+          results.push({
+            sheet: sheetInfo.name,
+            status: 'success',
+            message: 'Colunas corrigidas com sucesso',
+            details: `Aba "${sheetInfo.name}" teve suas colunas atualizadas`
+          });
+        } catch (error) {
+          results.push({
+            sheet: sheetInfo.name,
+            status: 'error',
+            message: 'Erro ao corrigir colunas',
+            details: `Falha ao corrigir a aba "${sheetInfo.name}": ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+          });
+        }
+      }
+
       // Show results
       const successCount = results.filter(r => r.status === 'success').length;
       const errorCount = results.filter(r => r.status === 'error').length;
@@ -188,7 +230,7 @@ const StructureValidator: React.FC = () => {
       if (successCount > 0) {
         toast({
           title: "Estrutura corrigida",
-          description: `${successCount} ${successCount === 1 ? 'aba foi criada' : 'abas foram criadas'} com sucesso${errorCount > 0 ? `, ${errorCount} falhas` : ''}`,
+          description: `${successCount} ${successCount === 1 ? 'problema foi corrigido' : 'problemas foram corrigidos'} com sucesso${errorCount > 0 ? `, ${errorCount} falhas` : ''}`,
           variant: errorCount > 0 ? "default" : "default"
         });
       }
@@ -196,7 +238,7 @@ const StructureValidator: React.FC = () => {
       if (errorCount > 0 && successCount === 0) {
         toast({
           title: "Erro na correção",
-          description: `Falha ao corrigir ${errorCount} ${errorCount === 1 ? 'aba' : 'abas'}`,
+          description: `Falha ao corrigir ${errorCount} ${errorCount === 1 ? 'problema' : 'problemas'}`,
           variant: "destructive"
         });
       }
@@ -261,7 +303,7 @@ const StructureValidator: React.FC = () => {
               )}
             </div>
             <div className="flex gap-2">
-              {validationResults.some(r => r.status === 'error' && r.message.includes('vazia ou não encontrada')) && (
+              {validationResults.some(r => (r.status === 'error' && r.message.includes('vazia ou não encontrada')) || (r.status === 'warning' && r.message.includes('Colunas faltando'))) && (
                 <Button 
                   onClick={fixStructureIssues} 
                   disabled={loading}
