@@ -69,15 +69,34 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
       };
 
       if (editingEmployee) {
-        await googleSheetsService.updateEmployee(employee);
         dispatch({ type: 'UPDATE_EMPLOYEE', payload: { id: employee.id, updates: employee } });
+        
+        // Tentar salvar no Google Sheets se estiver configurado
+        if (localStorage.getItem('google_sheets_connected') === 'true') {
+          try {
+            await googleSheetsService.updateEmployee(employee);
+          } catch (error) {
+            console.warn('Falha ao salvar no Google Sheets, dados salvos localmente');
+          }
+        }
+        
         toast({
           title: "Funcionário atualizado",
           description: `${employee.name} foi atualizado com sucesso`
         });
       } else {
-        await googleSheetsService.addEmployee(employee);
+        // Adicionar localmente primeiro
         dispatch({ type: 'ADD_EMPLOYEE', payload: employee });
+        
+        // Tentar salvar no Google Sheets se estiver configurado
+        if (localStorage.getItem('google_sheets_connected') === 'true') {
+          try {
+            await googleSheetsService.addEmployee(employee);
+          } catch (error) {
+            console.warn('Falha ao salvar no Google Sheets, dados salvos localmente');
+          }
+        }
+        
         toast({
           title: "Funcionário adicionado",
           description: `${employee.name} foi adicionado com sucesso`
@@ -102,7 +121,7 @@ const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editingEmployee ? 'Editar Funcionário' : 'Adicionar Funcionário'}

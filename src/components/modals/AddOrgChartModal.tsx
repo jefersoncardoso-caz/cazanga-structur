@@ -60,7 +60,14 @@ const AddOrgChartModal: React.FC<AddOrgChartModalProps> = ({
         visible: formData.visible
       };
 
-      await googleSheetsService.addCustomOrgChart(orgChart);
+      // Tentar salvar no Google Sheets se estiver configurado
+      if (localStorage.getItem('google_sheets_connected') === 'true') {
+        try {
+          await googleSheetsService.addCustomOrgChart(orgChart);
+        } catch (error) {
+          console.warn('Falha ao salvar no Google Sheets, organograma criado localmente');
+        }
+      }
       
       toast({
         title: "Organograma criado",

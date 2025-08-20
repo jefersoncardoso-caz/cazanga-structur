@@ -61,8 +61,18 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({
           description: `${department.name} foi atualizado com sucesso`
         });
       } else {
-        await googleSheetsService.addDepartment(department);
+        // Adicionar localmente primeiro
         dispatch({ type: 'ADD_DEPARTMENT', payload: { ...department, employees: [] } });
+        
+        // Tentar salvar no Google Sheets se estiver configurado
+        if (localStorage.getItem('google_sheets_connected') === 'true') {
+          try {
+            await googleSheetsService.addDepartment(department);
+          } catch (error) {
+            console.warn('Falha ao salvar no Google Sheets, dados salvos localmente');
+          }
+        }
+        
         toast({
           title: "Departamento adicionado",
           description: `${department.name} foi adicionado com sucesso`

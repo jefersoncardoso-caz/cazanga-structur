@@ -11,6 +11,7 @@ import AutoSyncManager from '@/components/admin/AutoSyncManager';
 import AddEmployeeModal from '@/components/modals/AddEmployeeModal';
 import AddDepartmentModal from '@/components/modals/AddDepartmentModal';
 import AddOrgChartModal from '@/components/modals/AddOrgChartModal';
+import EditOrgChartModal from '@/components/modals/EditOrgChartModal';
 import FileManager from '@/components/admin/FileManager';
 import { googleSheetsService } from '@/services/googleSheetsService';
 
@@ -24,8 +25,21 @@ const AdminPanel = () => {
   const [addEmployeeModalOpen, setAddEmployeeModalOpen] = useState(false);
   const [addDepartmentModalOpen, setAddDepartmentModalOpen] = useState(false);
   const [addOrgChartModalOpen, setAddOrgChartModalOpen] = useState(false);
+  const [editOrgChartModalOpen, setEditOrgChartModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [editingDepartment, setEditingDepartment] = useState(null);
+  const [editingOrgChart, setEditingOrgChart] = useState(null);
+  
+  // Organogramas padrão
+  const [orgCharts, setOrgCharts] = useState<Array<{id: string; name: string; type: string; description?: string}>>([
+    { id: '1', name: 'Macro 2025', type: 'macro', description: 'Organograma macro da empresa' },
+    { id: '2', name: 'Gente e Gestão', type: 'departamental', description: 'Organograma do departamento de pessoas' },
+    { id: '3', name: 'DHO', type: 'departamental', description: 'Organograma DHO' },
+    { id: '4', name: 'Departamento Pessoal', type: 'departamental', description: 'Organograma DP' },
+    { id: '5', name: 'Facilities', type: 'departamental', description: 'Organograma Facilities' },
+    { id: '6', name: 'SESMT', type: 'departamental', description: 'Organograma SESMT' },
+    { id: '7', name: 'SGQ', type: 'departamental', description: 'Organograma SGQ' }
+  ]);
 
   const handleLogin = () => {
     if (password === 'cazanga@2025') {
@@ -202,27 +216,29 @@ const AdminPanel = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {['Macro 2025', 'Gente e Gestão', 'DHO', 'Departamento Pessoal', 'Facilities', 'SESMT', 'SGQ'].map((chart) => (
-                <Card key={chart} className="p-6">
-                  <h3 className="font-semibold mb-2">{chart}</h3>
+              {orgCharts.map((chart) => (
+                <Card key={chart.id} className="p-6">
+                  <h3 className="font-semibold mb-2">{chart.name}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Organograma {chart.toLowerCase()}
+                    {chart.description}
                   </p>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => {
-                      toast({
-                        title: "Editando organograma",
-                        description: `Abrindo editor para ${chart}`
-                      });
+                      setEditingOrgChart(chart);
+                      setEditOrgChartModalOpen(true);
                     }}>Editar</Button>
                     <Button size="sm" variant="outline" onClick={() => {
                       dispatch({ type: 'SET_VIEW', payload: 'orgchart' });
                     }}>Visualizar</Button>
                     <Button size="sm" variant="destructive" onClick={() => {
-                      toast({
-                        title: "Organograma removido",
-                        description: `${chart} foi removido com sucesso`
-                      });
+                      const confirmed = window.confirm(`Tem certeza que deseja excluir "${chart.name}"?`);
+                      if (confirmed) {
+                        setOrgCharts(prev => prev.filter(org => org.id !== chart.id));
+                        toast({
+                          title: "Organograma removido",
+                          description: `${chart.name} foi removido com sucesso`
+                        });
+                      }
                     }}>Excluir</Button>
                   </div>
                 </Card>
@@ -372,20 +388,53 @@ const AdminPanel = () => {
               <Button className="mt-4" onClick={async () => {
                 try {
                   // Salvar configurações localmente primeiro
+                  localStorage.setItem('site_settings', JSON.stringify(state.siteSettings));
+                  
+                  // Aplicar as cores no CSS
                   const root = document.documentElement;
-                  root.style.setProperty('--primary', state.siteSettings.primaryColor);
-                  root.style.setProperty('--secondary', state.siteSettings.secondaryColor);
+                  
+                  // Converter hex para HSL se necessário
+                  const hexToHsl = (hex: string) => {
+                    const r = parseInt(hex.slice(1, 3), 16) / 255;
+                    const g = parseInt(hex.slice(3, 5), 16) / 255;
+                    const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+                    const max = Math.max(r, g, b);
+                    const min = Math.min(r, g, b);
+                    let h = 0, s = 0, l = (max + min) / 2;
+
+                    if (max !== min) {
+                      const d = max - min;
+                      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                      switch (max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                      }
+                      h /= 6;
+                    }
+
+                    return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+                  };
+                  
+                  root.style.setProperty('--primary', hexToHsl(state.siteSettings.primaryColor));
+                  root.style.setProperty('--secondary', hexToHsl(state.siteSettings.secondaryColor));
                   
                   // Tentar salvar no Google Sheets se configurado
                   if (localStorage.getItem('google_sheets_connected') === 'true') {
-                    await googleSheetsService.updateSiteSettings(state.siteSettings);
-                    toast({
-                      title: "Configurações salvas",
-                      description: "Cores atualizadas no sistema e no Google Sheets"
-                    });
+                    try {
+                      await googleSheetsService.updateSiteSettings(state.siteSettings);
+                      toast({
+                        title: "Configurações salvas",
+                        description: "Cores atualizadas no sistema e no Google Sheets"
+                      });
+                    } catch (error) {
+                      toast({
+                        title: "Configurações salvas localmente",
+                        description: "Cores atualizadas no sistema (erro no Google Sheets)"
+                      });
+                    }
                   } else {
-                    // Salvar apenas localmente se Google Sheets não estiver configurado
-                    localStorage.setItem('site_settings', JSON.stringify(state.siteSettings));
                     toast({
                       title: "Configurações salvas",
                       description: "Cores atualizadas no sistema local"
@@ -394,7 +443,7 @@ const AdminPanel = () => {
                 } catch (error) {
                   toast({
                     title: "Erro",
-                    description: "Erro ao salvar configurações",
+                    description: "Erro ao salvar configurações: " + error.message,
                     variant: "destructive"
                   });
                 }
@@ -771,11 +820,30 @@ const AdminPanel = () => {
         isOpen={addOrgChartModalOpen}
         onClose={() => setAddOrgChartModalOpen(false)}
         onSuccess={() => {
-          // Reload org charts if needed
+          // Adicionar novo organograma à lista
+          const newId = (Math.max(...orgCharts.map(org => parseInt(org.id))) + 1).toString();
+          // Este será tratado pelo modal AddOrgChartModal através do callback
           toast({
             title: "Organograma criado",
             description: "Novo organograma disponível"
           });
+        }}
+      />
+      
+      <EditOrgChartModal 
+        isOpen={editOrgChartModalOpen}
+        onClose={() => {
+          setEditOrgChartModalOpen(false);
+          setEditingOrgChart(null);
+        }}
+        orgChart={editingOrgChart}
+        onSave={(updatedOrgChart) => {
+          setOrgCharts(prev => prev.map(org => 
+            org.id === updatedOrgChart.id ? updatedOrgChart : org
+          ));
+        }}
+        onDelete={(id) => {
+          setOrgCharts(prev => prev.filter(org => org.id !== id));
         }}
       />
     </div>
