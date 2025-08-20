@@ -3,16 +3,28 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Users, Settings, FileText, Palette, Link2, Database, Sheet } from 'lucide-react';
+import { ArrowLeft, Users, Settings, FileText, Palette, Link2, Database, Sheet, Plus } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { toast } from '@/hooks/use-toast';
 import GoogleSheetsConfig from '@/components/admin/GoogleSheetsConfig';
+import AddEmployeeModal from '@/components/modals/AddEmployeeModal';
+import AddDepartmentModal from '@/components/modals/AddDepartmentModal';
+import AddOrgChartModal from '@/components/modals/AddOrgChartModal';
+import FileManager from '@/components/admin/FileManager';
+import { googleSheetsService } from '@/services/googleSheetsService';
 
 const AdminPanel = () => {
   const { state, dispatch } = useApp();
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Modal states
+  const [addEmployeeModalOpen, setAddEmployeeModalOpen] = useState(false);
+  const [addDepartmentModalOpen, setAddDepartmentModalOpen] = useState(false);
+  const [addOrgChartModalOpen, setAddOrgChartModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [editingDepartment, setEditingDepartment] = useState(null);
 
   const handleLogin = () => {
     if (password === 'cazanga@2025') {
@@ -122,7 +134,9 @@ const AdminPanel = () => {
                   <Database className="w-8 h-8 text-primary" />
                   <h3 className="text-lg font-semibold">Sincronização</h3>
                 </div>
-                <p className="text-sm font-medium text-green-600">Conectado</p>
+                <p className="text-sm font-medium text-green-600">
+                  {localStorage.getItem('google_sheets_spreadsheet_id') ? 'Conectado' : 'Desconectado'}
+                </p>
                 <p className="text-xs text-muted-foreground">Google Sheets</p>
               </Card>
             </div>
@@ -180,7 +194,10 @@ const AdminPanel = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Gerenciar Organogramas</h2>
-              <Button>Adicionar Organograma</Button>
+              <Button onClick={() => setAddOrgChartModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Organograma
+              </Button>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -205,12 +222,16 @@ const AdminPanel = () => {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">Gerenciar Funcionários</h2>
-              <Button onClick={() => {
-                toast({
-                  title: "Adicionar funcionário",
-                  description: "Funcionalidade em desenvolvimento"
-                });
-              }}>Adicionar Funcionário</Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setAddDepartmentModalOpen(true)} variant="outline">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Departamento
+                </Button>
+                <Button onClick={() => setAddEmployeeModalOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Funcionário
+                </Button>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -239,17 +260,23 @@ const AdminPanel = () => {
                     <p className="text-xs text-muted-foreground mb-3">{employee.department}</p>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => {
-                        toast({
-                          title: "Editar funcionário",
-                          description: `Editando ${employee.name}`
-                        });
+                        setEditingEmployee(employee);
+                        setAddEmployeeModalOpen(true);
                       }}>Editar</Button>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        toast({
-                          title: "Remover funcionário",
-                          description: `${employee.name} removido`,
-                          variant: "destructive"
-                        });
+                      <Button size="sm" variant="destructive" onClick={async () => {
+                        try {
+                          dispatch({ type: 'DELETE_EMPLOYEE', payload: employee.id });
+                          toast({
+                            title: "Funcionário removido",
+                            description: `${employee.name} foi removido`
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Erro",
+                            description: "Erro ao remover funcionário",
+                            variant: "destructive"
+                          });
+                        }
                       }}>Remover</Button>
                     </div>
                   </Card>
@@ -260,37 +287,7 @@ const AdminPanel = () => {
         );
 
       case 'files':
-        return (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Gerenciar Arquivos</h2>
-              <Button>Upload de Arquivo</Button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="p-6 text-center">
-                <FileText className="w-12 h-12 mx-auto mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">Fotos de Funcionários</h3>
-                <p className="text-sm text-muted-foreground mb-4">0 arquivos</p>
-                <Button size="sm" variant="outline">Gerenciar</Button>
-              </Card>
-
-              <Card className="p-6 text-center">
-                <FileText className="w-12 h-12 mx-auto mb-4 text-secondary" />
-                <h3 className="font-semibold mb-2">Logos e Ícones</h3>
-                <p className="text-sm text-muted-foreground mb-4">0 arquivos</p>
-                <Button size="sm" variant="outline">Gerenciar</Button>
-              </Card>
-
-              <Card className="p-6 text-center">
-                <FileText className="w-12 h-12 mx-auto mb-4 text-primary" />
-                <h3 className="font-semibold mb-2">PDFs e Documentos</h3>
-                <p className="text-sm text-muted-foreground mb-4">0 arquivos</p>
-                <Button size="sm" variant="outline">Gerenciar</Button>
-              </Card>
-            </div>
-          </div>
-        );
+        return <FileManager />;
 
       case 'design':
         return (
@@ -358,11 +355,20 @@ const AdminPanel = () => {
                 </div>
               </div>
               
-              <Button className="mt-4" onClick={() => {
-                toast({
-                  title: "Cores atualizadas",
-                  description: "As cores da marca foram salvas com sucesso"
-                });
+              <Button className="mt-4" onClick={async () => {
+                try {
+                  await googleSheetsService.updateSiteSettings(state.siteSettings);
+                  toast({
+                    title: "Cores atualizadas",
+                    description: "As cores da marca foram salvas no Google Sheets"
+                  });
+                } catch (error) {
+                  toast({
+                    title: "Erro",
+                    description: "Erro ao salvar configurações",
+                    variant: "destructive"
+                  });
+                }
               }}>Salvar Alterações</Button>
             </Card>
 
@@ -652,6 +658,37 @@ const AdminPanel = () => {
           {renderContent()}
         </main>
       </div>
+
+      {/* Modals */}
+      <AddEmployeeModal 
+        isOpen={addEmployeeModalOpen}
+        onClose={() => {
+          setAddEmployeeModalOpen(false);
+          setEditingEmployee(null);
+        }}
+        editingEmployee={editingEmployee}
+      />
+      
+      <AddDepartmentModal 
+        isOpen={addDepartmentModalOpen}
+        onClose={() => {
+          setAddDepartmentModalOpen(false);
+          setEditingDepartment(null);
+        }}
+        editingDepartment={editingDepartment}
+      />
+      
+      <AddOrgChartModal 
+        isOpen={addOrgChartModalOpen}
+        onClose={() => setAddOrgChartModalOpen(false)}
+        onSuccess={() => {
+          // Reload org charts if needed
+          toast({
+            title: "Organograma criado",
+            description: "Novo organograma disponível"
+          });
+        }}
+      />
     </div>
   );
 };
