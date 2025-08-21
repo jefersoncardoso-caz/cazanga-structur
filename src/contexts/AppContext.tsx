@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { googleSheetsService } from '@/services/googleSheetsService';
-import { useLoading } from '@/contexts/LoadingContext';
 import { errorHandlingService } from '@/services/errorHandlingService';
 
 // Types
@@ -199,17 +198,14 @@ const AppContext = createContext<{
   dispatch: React.Dispatch<AppAction>;
 } | null>(null);
 
-// Provider component that must be used within LoadingProvider
+// Provider component
 const AppProviderInner: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const { startLoading, updateProgress, stopLoading } = useLoading();
 
   // Load data from Google Sheets on initialization
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        startLoading('Verificando conexão com Google Sheets...');
-        
         // Check if Google Sheets is properly configured
         const spreadsheetId = localStorage.getItem('google_sheets_spreadsheet_id');
         const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
@@ -217,20 +213,14 @@ const AppProviderInner: React.FC<{ children: ReactNode }> = ({ children }) => {
         if (!isConnected || !spreadsheetId) {
           console.log('Google Sheets not connected, keeping empty initial data');
           dispatch({ type: 'SET_DATA_LOADED', payload: true });
-          stopLoading();
           return;
         }
-
-        updateProgress(25, 'Carregando configurações...');
         
-        // Load all data with progress tracking
-        await googleSheetsService.loadAllDataWithProgress(dispatch, updateProgress);
+        // Load all data
+        await googleSheetsService.loadAllData(dispatch);
         
         dispatch({ type: 'SET_DATA_LOADED', payload: true });
         dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
-        
-        updateProgress(100, 'Carregamento concluído!');
-        setTimeout(stopLoading, 500);
         
         console.log('Data loaded from Google Sheets successfully');
         
@@ -240,13 +230,11 @@ const AppProviderInner: React.FC<{ children: ReactNode }> = ({ children }) => {
         
         const appError = errorHandlingService.handleGoogleSheetsError(error);
         errorHandlingService.logError(appError);
-        
-        stopLoading();
       }
     };
 
     loadInitialData();
-  }, [startLoading, updateProgress, stopLoading]);
+  }, []);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
@@ -255,7 +243,6 @@ const AppProviderInner: React.FC<{ children: ReactNode }> = ({ children }) => {
   );
 };
 
-// Main provider that includes LoadingProvider
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <AppProviderInner>
