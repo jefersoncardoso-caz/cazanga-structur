@@ -272,17 +272,45 @@ class GoogleSheetsService {
   // Load all data and dispatch to context
   async loadAllData(dispatch: any): Promise<void> {
     try {
-      const [employees, departments, siteSettings] = await Promise.all([
+      const [employees, departments, siteSettings, orgCharts] = await Promise.all([
         this.getEmployees(),
         this.getDepartments(),
-        this.getSiteSettings()
+        this.getSiteSettings(),
+        this.getCustomOrgCharts()
       ]);
 
       dispatch({ type: 'SET_EMPLOYEES', payload: employees });
       dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
       dispatch({ type: 'SET_SITE_SETTINGS', payload: siteSettings });
+      dispatch({ type: 'SET_ORGCHARTS', payload: orgCharts });
     } catch (error) {
       console.error('Error loading all data:', error);
+      throw error;
+    }
+  }
+
+  // Load all data with progress tracking
+  async loadAllDataWithProgress(dispatch: any, updateProgress: (progress: number, message?: string) => void): Promise<void> {
+    try {
+      updateProgress(25, 'Carregando configurações do site...');
+      const siteSettings = await this.getSiteSettings();
+      dispatch({ type: 'SET_SITE_SETTINGS', payload: siteSettings });
+
+      updateProgress(50, 'Carregando funcionários...');
+      const employees = await this.getEmployees();
+      dispatch({ type: 'SET_EMPLOYEES', payload: employees });
+
+      updateProgress(75, 'Carregando departamentos...');
+      const departments = await this.getDepartments();
+      dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
+
+      updateProgress(90, 'Carregando organogramas...');
+      const orgCharts = await this.getCustomOrgCharts();
+      dispatch({ type: 'SET_ORGCHARTS', payload: orgCharts });
+
+      updateProgress(100, 'Carregamento finalizado!');
+    } catch (error) {
+      console.error('Error loading all data with progress:', error);
       throw error;
     }
   }
@@ -303,6 +331,29 @@ class GoogleSheetsService {
     } catch (error) {
       console.error('Error getting custom org charts:', error);
       return [];
+    }
+  }
+
+  async updateCustomOrgChart(orgChart: any): Promise<void> {
+    try {
+      const data = await this.readSheet('Organogramas');
+      if (data.length <= 1) throw new Error('Organogramas sheet is empty');
+
+      const rowIndex = data.findIndex((row, index) => index > 0 && row[0] === orgChart.id);
+      if (rowIndex === -1) throw new Error('Org chart not found');
+
+      const updatedRow = [
+        orgChart.id,
+        orgChart.name,
+        orgChart.type,
+        JSON.stringify(orgChart.data),
+        orgChart.visible !== false ? 'true' : 'false'
+      ];
+
+      await this.writeSheet('Organogramas', [updatedRow], `A${rowIndex + 1}:E${rowIndex + 1}`);
+    } catch (error) {
+      console.error('Error updating org chart:', error);
+      throw error;
     }
   }
 
