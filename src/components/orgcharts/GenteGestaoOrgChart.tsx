@@ -4,14 +4,41 @@ import { OrgChartNode } from '@/components/ui/org-chart-node';
 import { useApp } from '@/contexts/AppContext';
 
 interface GenteGestaoOrgChartProps {
-  onSelectTeam: (team: any) => void;
+  onSelectTeam: (team: any) => void;  
+  orgChart: any;
 }
 
-const GenteGestaoOrgChart: React.FC<GenteGestaoOrgChartProps> = ({ onSelectTeam }) => {
+const GenteGestaoOrgChart: React.FC<GenteGestaoOrgChartProps> = ({ onSelectTeam, orgChart }) => {
   const { state } = useApp();
   const { departments, employees } = state;
 
-  // Find departments related to "Gente e Gestão" or similar
+  // Check if Google Sheets is connected
+  const isConnected = localStorage.getItem('google_sheets_connected') === 'true';
+  
+  if (!isConnected) {
+    return (
+      <OrgChart title={orgChart?.name || "Organograma Gente e Gestão"}>
+        <div className="text-center text-muted-foreground py-8">
+          <p>Google Sheets não configurado.</p>
+          <p className="text-sm">Configure a integração no painel administrativo.</p>
+        </div>
+      </OrgChart>
+    );
+  }
+
+  // Only show data if we have employees and departments from Google Sheets
+  if (!employees.length && !departments.length) {
+    return (
+      <OrgChart title={orgChart?.name || "Organograma Gente e Gestão"}>
+        <div className="text-center text-muted-foreground py-8">
+          <p>Nenhum dado encontrado no Google Sheets.</p>
+          <p className="text-sm">Adicione funcionários e departamentos no painel administrativo.</p>
+        </div>
+      </OrgChart>
+    );
+  }
+
+  // Find departments related to "Gente e Gestão" - only from Google Sheets data
   const genteGestaoDepartments = departments.filter(dept => 
     dept.visible !== false && (
       dept.name.toLowerCase().includes('recursos humanos') ||
@@ -22,7 +49,7 @@ const GenteGestaoOrgChart: React.FC<GenteGestaoOrgChartProps> = ({ onSelectTeam 
     )
   );
 
-  // Find managers for Gente e Gestão area
+  // Find managers for Gente e Gestão area - only from Google Sheets data
   const genteGestaoManagers = employees.filter(emp => 
     emp.isManager && emp.visible !== false && (
       emp.department?.toLowerCase().includes('recursos humanos') ||
@@ -33,23 +60,8 @@ const GenteGestaoOrgChart: React.FC<GenteGestaoOrgChartProps> = ({ onSelectTeam 
     )
   );
 
-  // Get teams/departments data
-  const getTeamData = (teamName: string) => {
-    const teamEmployees = employees.filter(emp => 
-      emp.visible !== false && (
-        emp.team?.toLowerCase().includes(teamName.toLowerCase()) ||
-        emp.department?.toLowerCase().includes(teamName.toLowerCase())
-      )
-    );
-    return {
-      employees: teamEmployees,
-      count: teamEmployees.length,
-      positions: teamEmployees.map(emp => emp.position).filter(Boolean)
-    };
-  };
-
   return (
-    <OrgChart title="Organograma Gente e Gestão">
+    <OrgChart title={orgChart?.name || "Organograma Gente e Gestão"}>
       {/* Gerente de Gente e Gestão */}
       <OrgLevel>
         {genteGestaoManagers.length > 0 ? (
@@ -62,17 +74,18 @@ const GenteGestaoOrgChart: React.FC<GenteGestaoOrgChartProps> = ({ onSelectTeam 
             />
           ))
         ) : (
-          <OrgChartNode 
-            title="GERENTE DE GENTE E GESTÃO" 
-            variant="manager"
-          />
+          <div className="text-center text-muted-foreground py-4">
+            <p>Nenhum gerente de Gente e Gestão configurado.</p>
+          </div>
         )}
       </OrgLevel>
 
       {/* Connection Line */}
-      <div className="flex justify-center mb-4">
-        <div className="w-px h-8 bg-primary"></div>
-      </div>
+      {genteGestaoManagers.length > 0 && (
+        <div className="flex justify-center mb-4">
+          <div className="w-px h-8 bg-primary"></div>
+        </div>
+      )}
 
       {/* Departamentos */}
       <OrgLevel className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 max-w-6xl mx-auto">
@@ -109,77 +122,18 @@ const GenteGestaoOrgChart: React.FC<GenteGestaoOrgChartProps> = ({ onSelectTeam 
             );
           })
         ) : (
-          // Fallback with common HR teams if no departments configured
-          <>
-            <div 
-              className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => onSelectTeam('rh')}
-            >
-              <OrgChartNode 
-                title="RECURSOS HUMANOS"
-                variant="team"
-                count={getTeamData('rh').count}
-              />
-            </div>
-
-            <div 
-              className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => onSelectTeam('dp')}
-            >
-              <OrgChartNode 
-                title="DEPARTAMENTO PESSOAL"
-                variant="team"
-                count={getTeamData('pessoal').count}
-              />
-            </div>
-
-            <div 
-              className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => onSelectTeam('facilities')}
-            >
-              <OrgChartNode 
-                title="FACILITIES"
-                variant="team"
-                count={getTeamData('facilities').count}
-              />
-            </div>
-
-            <div 
-              className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => onSelectTeam('sesmt')}
-            >
-              <OrgChartNode 
-                title="SESMT"
-                variant="team"
-                count={getTeamData('sesmt').count}
-              />
-            </div>
-
-            <div 
-              className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => onSelectTeam('sgq')}
-            >
-              <OrgChartNode 
-                title="SGQ"
-                variant="team"
-                count={getTeamData('sgq').count}
-              />
-            </div>
-          </>
-        )}
-
-        {/* Show message if no data */}
-        {genteGestaoDepartments.length === 0 && employees.length === 0 && (
           <div className="col-span-full text-center text-muted-foreground py-8">
-            <p>Nenhum departamento de Gente e Gestão configurado.</p>
-            <p className="text-sm">Configure departamentos e funcionários no painel administrativo.</p>
+            <p>Nenhum departamento de Gente e Gestão configurado no Google Sheets.</p>
+            <p className="text-sm">Adicione departamentos relacionados a RH no painel administrativo.</p>
           </div>
         )}
       </OrgLevel>
 
-      <div className="mt-8 text-center text-sm text-muted-foreground">
-        <p>Clique em qualquer departamento para visualizar a estrutura detalhada da equipe</p>
-      </div>
+      {genteGestaoDepartments.length > 0 && (
+        <div className="mt-8 text-center text-sm text-muted-foreground">
+          <p>Clique em qualquer departamento para visualizar a estrutura detalhada da equipe</p>
+        </div>
+      )}
     </OrgChart>
   );
 };

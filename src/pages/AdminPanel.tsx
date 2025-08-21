@@ -49,25 +49,10 @@ const AdminPanel = () => {
         if (isConnected) {
           const customOrgCharts = await googleSheetsService.getCustomOrgCharts();
           setOrgCharts(customOrgCharts);
-        } else {
-          // Organogramas padrão se não conectado
-          setOrgCharts([
-            { id: '1', name: 'Macro 2025', type: 'macro', description: 'Organograma macro da empresa' },
-            { id: '2', name: 'Gente e Gestão', type: 'departamental', description: 'Organograma do departamento de pessoas' },
-            { id: '3', name: 'DHO', type: 'departamental', description: 'Organograma DHO' },
-            { id: '4', name: 'Departamento Pessoal', type: 'departamental', description: 'Organograma DP' },
-            { id: '5', name: 'Facilities', type: 'departamental', description: 'Organograma Facilities' },
-            { id: '6', name: 'SESMT', type: 'departamental', description: 'Organograma SESMT' },
-            { id: '7', name: 'SGQ', type: 'departamental', description: 'Organograma SGQ' }
-          ]);
         }
       } catch (error) {
         console.error('Error loading org charts:', error);
-        // Usar organogramas padrão em caso de erro
-        setOrgCharts([
-          { id: '1', name: 'Macro 2025', type: 'macro', description: 'Organograma macro da empresa' },
-          { id: '2', name: 'Gente e Gestão', type: 'departamental', description: 'Organograma do departamento de pessoas' }
-        ]);
+        setOrgCharts([]);
       }
     };
 
@@ -356,33 +341,49 @@ const AdminPanel = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {orgCharts.map((chart) => (
-                <Card key={chart.id} className="p-6">
-                  <h3 className="font-semibold mb-2">{chart.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {chart.description}
+              {orgCharts.length === 0 ? (
+                <Card className="col-span-full p-8 text-center">
+                  <p className="text-muted-foreground">
+                    {localStorage.getItem('google_sheets_connected') === 'true' 
+                      ? 'Nenhum organograma criado ainda.'
+                      : 'Google Sheets não configurado.'
+                    }
+                    <br />
+                    {localStorage.getItem('google_sheets_connected') === 'true' 
+                      ? 'Use o botão "Adicionar Organograma" para criar seu primeiro organograma.'
+                      : 'Configure a integração com Google Sheets primeiro.'
+                    }
                   </p>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => {
-                      setEditingOrgChart(chart);
-                      setEditOrgChartModalOpen(true);
-                    }}>Editar</Button>
-                    <Button size="sm" variant="outline" onClick={() => {
-                      dispatch({ type: 'SET_VIEW', payload: 'orgchart' });
-                    }}>Visualizar</Button>
-                    <Button size="sm" variant="destructive" onClick={() => {
-                      const confirmed = window.confirm(`Tem certeza que deseja excluir "${chart.name}"?`);
-                      if (confirmed) {
-                        setOrgCharts(prev => prev.filter(org => org.id !== chart.id));
-                        toast({
-                          title: "Organograma removido",
-                          description: `${chart.name} foi removido com sucesso`
-                        });
-                      }
-                    }}>Excluir</Button>
-                  </div>
                 </Card>
-              ))}
+              ) : (
+                orgCharts.map((chart) => (
+                  <Card key={chart.id} className="p-6">
+                    <h3 className="font-semibold mb-2">{chart.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {chart.description}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => {
+                        setEditingOrgChart(chart);
+                        setEditOrgChartModalOpen(true);
+                      }}>Editar</Button>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        dispatch({ type: 'SET_VIEW', payload: 'orgchart' });
+                      }}>Visualizar</Button>
+                      <Button size="sm" variant="destructive" onClick={() => {
+                        const confirmed = window.confirm(`Tem certeza que deseja excluir "${chart.name}"?`);
+                        if (confirmed) {
+                          setOrgCharts(prev => prev.filter(org => org.id !== chart.id));
+                          toast({
+                            title: "Organograma removido",
+                            description: `${chart.name} foi removido com sucesso`
+                          });
+                        }
+                      }}>Excluir</Button>
+                    </div>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         );
