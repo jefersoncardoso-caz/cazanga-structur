@@ -1,27 +1,46 @@
 import { Employee, Department, SiteSettings } from '@/contexts/AppContext';
 
-const SUPABASE_URL = 'https://tefjkdgyniebwanxyayg.supabase.co';
+const API_BASE_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
 
 class GoogleSheetsService {
-  private baseUrl = `${SUPABASE_URL}/functions/v1/google-sheets`;
+  private getApiKey(): string {
+    return localStorage.getItem('google_api_key') || '';
+  }
 
   private getSpreadsheetId(): string {
     return localStorage.getItem('google_sheets_spreadsheet_id') || '';
   }
 
+  private async makeRequest(url: string, options?: RequestInit): Promise<any> {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   async readSheet(sheetName: string): Promise<string[][]> {
     try {
       const spreadsheetId = this.getSpreadsheetId();
-      if (!spreadsheetId) {
-        throw new Error('Spreadsheet ID not configured. Please configure Google Sheets first.');
+      const apiKey = this.getApiKey();
+      
+      if (!spreadsheetId || !apiKey) {
+        throw new Error('Google Sheets não configurado. Configure primeiro no painel administrativo.');
       }
       
-      const response = await fetch(`${this.baseUrl}?action=read&sheet=${sheetName}&spreadsheetId=${spreadsheetId}`);
-      const data = await response.json();
+      const range = `${sheetName}!A:Z`;
+      const url = `${API_BASE_URL}/${spreadsheetId}/values/${range}?key=${apiKey}`;
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to read sheet');
-      }
+      const data = await this.makeRequest(url);
       
       return data.values || [];
     } catch (error) {
@@ -33,22 +52,18 @@ class GoogleSheetsService {
   async writeSheet(sheetName: string, values: string[][], range: string): Promise<void> {
     try {
       const spreadsheetId = this.getSpreadsheetId();
-      if (!spreadsheetId) {
-        throw new Error('Spreadsheet ID not configured. Please configure Google Sheets first.');
+      const apiKey = this.getApiKey();
+      
+      if (!spreadsheetId || !apiKey) {
+        throw new Error('Google Sheets não configurado. Configure primeiro no painel administrativo.');
       }
       
-      const response = await fetch(`${this.baseUrl}?action=write&sheet=${sheetName}&spreadsheetId=${spreadsheetId}`, {
+      const url = `${API_BASE_URL}/${spreadsheetId}/values/${sheetName}!${range}?valueInputOption=RAW&key=${apiKey}`;
+      
+      await this.makeRequest(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ values, range }),
+        body: JSON.stringify({ values })
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to write sheet');
-      }
     } catch (error) {
       console.error('Error writing sheet:', error);
       throw error;
@@ -58,22 +73,19 @@ class GoogleSheetsService {
   async appendSheet(sheetName: string, values: string[][]): Promise<void> {
     try {
       const spreadsheetId = this.getSpreadsheetId();
-      if (!spreadsheetId) {
-        throw new Error('Spreadsheet ID not configured. Please configure Google Sheets first.');
+      const apiKey = this.getApiKey();
+      
+      if (!spreadsheetId || !apiKey) {
+        throw new Error('Google Sheets não configurado. Configure primeiro no painel administrativo.');
       }
       
-      const response = await fetch(`${this.baseUrl}?action=append&sheet=${sheetName}&spreadsheetId=${spreadsheetId}`, {
+      const range = `${sheetName}!A:Z`;
+      const url = `${API_BASE_URL}/${spreadsheetId}/values/${range}:append?valueInputOption=RAW&key=${apiKey}`;
+      
+      await this.makeRequest(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ values }),
+        body: JSON.stringify({ values })
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to append to sheet');
-      }
     } catch (error) {
       console.error('Error appending to sheet:', error);
       throw error;

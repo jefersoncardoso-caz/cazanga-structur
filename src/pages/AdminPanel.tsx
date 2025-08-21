@@ -17,6 +17,7 @@ import EditDepartmentModal from '@/components/modals/EditDepartmentModal';
 import AddOrgChartModal from '@/components/modals/AddOrgChartModal';
 import EditOrgChartModal from '@/components/modals/EditOrgChartModal';
 import FileManager from '@/components/admin/FileManager';
+import BackupManager from '@/components/admin/BackupManager';
 import { googleSheetsService } from '@/services/googleSheetsService';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useAutoSync } from '@/hooks/useAutoSync';
@@ -51,6 +52,7 @@ const AdminPanel = () => {
           setOrgCharts(customOrgCharts);
         }
       } catch (error) {
+          { id: 'backup', label: 'Backup', icon: Shield },
         console.error('Error loading org charts:', error);
         setOrgCharts([]);
       }
@@ -683,6 +685,9 @@ const AdminPanel = () => {
 
       case 'validator':
         return <StructureValidator />;
+
+      case 'backup':
+        return <BackupManager />;
 
       case 'files':
         return <FileManager />;
