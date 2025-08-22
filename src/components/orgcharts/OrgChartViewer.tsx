@@ -19,6 +19,7 @@ import {
 import { useApp } from '@/contexts/AppContext';
 import InteractiveOrgChart from './InteractiveOrgChart';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 interface OrgChartViewerProps {
   orgChart: any;
