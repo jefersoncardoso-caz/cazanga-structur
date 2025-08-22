@@ -52,18 +52,28 @@ class GoogleSheetsService {
   async writeSheet(sheetName: string, values: string[][], range: string): Promise<void> {
     try {
       const spreadsheetId = this.getSpreadsheetId();
-      const apiKey = this.getApiKey();
       
-      if (!spreadsheetId || !apiKey) {
+      if (!spreadsheetId) {
         throw new Error('Google Sheets não configurado. Configure primeiro no painel administrativo.');
       }
       
-      const url = `${API_BASE_URL}/${spreadsheetId}/values/${sheetName}!${range}?valueInputOption=RAW&key=${apiKey}`;
-      
-      await this.makeRequest(url, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-sheets?action=write&spreadsheetId=${spreadsheetId}`, {
         method: 'POST',
-        body: JSON.stringify({ values })
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sheet: sheetName,
+          values,
+          range
+        })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to write to sheet');
+      }
     } catch (error) {
       console.error('Error writing sheet:', error);
       throw error;
@@ -73,19 +83,27 @@ class GoogleSheetsService {
   async appendSheet(sheetName: string, values: string[][]): Promise<void> {
     try {
       const spreadsheetId = this.getSpreadsheetId();
-      const apiKey = this.getApiKey();
       
-      if (!spreadsheetId || !apiKey) {
+      if (!spreadsheetId) {
         throw new Error('Google Sheets não configurado. Configure primeiro no painel administrativo.');
       }
       
-      const range = `${sheetName}!A:Z`;
-      const url = `${API_BASE_URL}/${spreadsheetId}/values/${range}:append?valueInputOption=RAW&key=${apiKey}`;
-      
-      await this.makeRequest(url, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-sheets?action=append&spreadsheetId=${spreadsheetId}`, {
         method: 'POST',
-        body: JSON.stringify({ values })
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sheet: sheetName,
+          values
+        })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to append to sheet');
+      }
     } catch (error) {
       console.error('Error appending to sheet:', error);
       throw error;
