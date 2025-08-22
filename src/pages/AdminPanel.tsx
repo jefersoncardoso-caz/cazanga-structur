@@ -52,7 +52,6 @@ const AdminPanel = () => {
           setOrgCharts(customOrgCharts);
         }
       } catch (error) {
-          { id: 'backup', label: 'Backup', icon: Shield },
         console.error('Error loading org charts:', error);
         setOrgCharts([]);
       }
