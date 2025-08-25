@@ -1,46 +1,27 @@
 import { Employee, Department, SiteSettings } from '@/contexts/AppContext';
 
-const API_BASE_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
+const SUPABASE_URL = 'https://tefjkdgyniebwanxyayg.supabase.co';
 
 class GoogleSheetsService {
-  private getApiKey(): string {
-    return localStorage.getItem('google_api_key') || '';
-  }
+  private baseUrl = `${SUPABASE_URL}/functions/v1/google-sheets`;
 
   private getSpreadsheetId(): string {
     return localStorage.getItem('google_sheets_spreadsheet_id') || '';
   }
 
-  private async makeRequest(url: string, options?: RequestInit): Promise<any> {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers
-      }
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    return response.json();
-  }
-
   async readSheet(sheetName: string): Promise<string[][]> {
     try {
       const spreadsheetId = this.getSpreadsheetId();
-      const apiKey = this.getApiKey();
-      
-      if (!spreadsheetId || !apiKey) {
-        throw new Error('Google Sheets não configurado. Configure primeiro no painel administrativo.');
+      if (!spreadsheetId) {
+        throw new Error('Spreadsheet ID not configured. Please configure Google Sheets first.');
       }
       
-      const range = `${sheetName}!A:Z`;
-      const url = `${API_BASE_URL}/${spreadsheetId}/values/${range}?key=${apiKey}`;
+      const response = await fetch(`${this.baseUrl}?action=read&sheet=${sheetName}&spreadsheetId=${spreadsheetId}`);
+      const data = await response.json();
       
-      const data = await this.makeRequest(url);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to read sheet');
+      }
       
       return data.values || [];
     } catch (error) {
@@ -52,27 +33,21 @@ class GoogleSheetsService {
   async writeSheet(sheetName: string, values: string[][], range: string): Promise<void> {
     try {
       const spreadsheetId = this.getSpreadsheetId();
-      
       if (!spreadsheetId) {
-        throw new Error('Google Sheets não configurado. Configure primeiro no painel administrativo.');
+        throw new Error('Spreadsheet ID not configured. Please configure Google Sheets first.');
       }
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-sheets?action=write&spreadsheetId=${spreadsheetId}`, {
+      const response = await fetch(`${this.baseUrl}?action=write&sheet=${sheetName}&spreadsheetId=${spreadsheetId}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sheet: sheetName,
-          values,
-          range
-        })
+        body: JSON.stringify({ values, range }),
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to write to sheet');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to write sheet');
       }
     } catch (error) {
       console.error('Error writing sheet:', error);
@@ -83,26 +58,21 @@ class GoogleSheetsService {
   async appendSheet(sheetName: string, values: string[][]): Promise<void> {
     try {
       const spreadsheetId = this.getSpreadsheetId();
-      
       if (!spreadsheetId) {
-        throw new Error('Google Sheets não configurado. Configure primeiro no painel administrativo.');
+        throw new Error('Spreadsheet ID not configured. Please configure Google Sheets first.');
       }
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-sheets?action=append&spreadsheetId=${spreadsheetId}`, {
+      const response = await fetch(`${this.baseUrl}?action=append&sheet=${sheetName}&spreadsheetId=${spreadsheetId}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sheet: sheetName,
-          values
-        })
+        body: JSON.stringify({ values }),
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to append to sheet');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to append to sheet');
       }
     } catch (error) {
       console.error('Error appending to sheet:', error);
@@ -202,41 +172,6 @@ class GoogleSheetsService {
     await this.appendSheet('Departamentos', values);
   }
 
-  async updateDepartment(department: Department): Promise<void> {
-    try {
-      const data = await this.readSheet('Departamentos');
-      if (data.length <= 1) throw new Error('Departamentos sheet is empty');
-
-      const rowIndex = data.findIndex((row, index) => index > 0 && row[0] === department.id);
-      if (rowIndex === -1) throw new Error('Department not found');
-
-      const updatedRow = [
-        department.id,
-        department.name,
-        department.color,
-        department.visible !== false ? 'true' : 'false'
-      ];
-
-      await this.writeSheet('Departamentos', [updatedRow], `A${rowIndex + 1}:D${rowIndex + 1}`);
-    } catch (error) {
-      console.error('Error updating department:', error);
-      throw error;
-    }
-  }
-
-  async deleteDepartment(departmentId: string): Promise<void> {
-    try {
-      const data = await this.readSheet('Departamentos');
-      if (data.length <= 1) throw new Error('Departamentos sheet is empty');
-
-      const filteredData = data.filter((row, index) => index === 0 || row[0] !== departmentId);
-      await this.writeSheet('Departamentos', filteredData, 'A:Z');
-    } catch (error) {
-      console.error('Error deleting department:', error);
-      throw error;
-    }
-  }
-
   // Configurações do Site
   async getSiteSettings(): Promise<SiteSettings> {
     try {
@@ -287,7 +222,7 @@ class GoogleSheetsService {
     const updatedSettings = { ...currentSettings, ...settings };
     
     const values = [
-      ['Configuração', 'Valor'],
+      ['Setting', 'Value'],
       ['companyName', updatedSettings.companyName],
       ['primaryColor', updatedSettings.primaryColor],
       ['secondaryColor', updatedSettings.secondaryColor],
@@ -297,52 +232,6 @@ class GoogleSheetsService {
     ];
     
     await this.writeSheet('Configuracoes', values, 'A:B');
-  }
-
-  // Load all data and dispatch to context
-  async loadAllData(dispatch: any): Promise<void> {
-    try {
-      const [employees, departments, siteSettings, orgCharts] = await Promise.all([
-        this.getEmployees(),
-        this.getDepartments(),
-        this.getSiteSettings(),
-        this.getCustomOrgCharts()
-      ]);
-
-      dispatch({ type: 'SET_EMPLOYEES', payload: employees });
-      dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
-      dispatch({ type: 'SET_SITE_SETTINGS', payload: siteSettings });
-      dispatch({ type: 'SET_ORGCHARTS', payload: orgCharts });
-    } catch (error) {
-      console.error('Error loading all data:', error);
-      throw error;
-    }
-  }
-
-  // Load all data with progress tracking
-  async loadAllDataWithProgress(dispatch: any, updateProgress: (progress: number, message?: string) => void): Promise<void> {
-    try {
-      updateProgress(25, 'Carregando configurações do site...');
-      const siteSettings = await this.getSiteSettings();
-      dispatch({ type: 'SET_SITE_SETTINGS', payload: siteSettings });
-
-      updateProgress(50, 'Carregando funcionários...');
-      const employees = await this.getEmployees();
-      dispatch({ type: 'SET_EMPLOYEES', payload: employees });
-
-      updateProgress(75, 'Carregando departamentos...');
-      const departments = await this.getDepartments();
-      dispatch({ type: 'SET_DEPARTMENTS', payload: departments });
-
-      updateProgress(90, 'Carregando organogramas...');
-      const orgCharts = await this.getCustomOrgCharts();
-      dispatch({ type: 'SET_ORGCHARTS', payload: orgCharts });
-
-      updateProgress(100, 'Carregamento finalizado!');
-    } catch (error) {
-      console.error('Error loading all data with progress:', error);
-      throw error;
-    }
   }
 
   // Organogramas personalizados
@@ -361,29 +250,6 @@ class GoogleSheetsService {
     } catch (error) {
       console.error('Error getting custom org charts:', error);
       return [];
-    }
-  }
-
-  async updateCustomOrgChart(orgChart: any): Promise<void> {
-    try {
-      const data = await this.readSheet('Organogramas');
-      if (data.length <= 1) throw new Error('Organogramas sheet is empty');
-
-      const rowIndex = data.findIndex((row, index) => index > 0 && row[0] === orgChart.id);
-      if (rowIndex === -1) throw new Error('Org chart not found');
-
-      const updatedRow = [
-        orgChart.id,
-        orgChart.name,
-        orgChart.type,
-        JSON.stringify(orgChart.data),
-        orgChart.visible !== false ? 'true' : 'false'
-      ];
-
-      await this.writeSheet('Organogramas', [updatedRow], `A${rowIndex + 1}:E${rowIndex + 1}`);
-    } catch (error) {
-      console.error('Error updating org chart:', error);
-      throw error;
     }
   }
 

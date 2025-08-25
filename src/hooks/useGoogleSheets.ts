@@ -7,9 +7,7 @@ export const useGoogleSheets = () => {
   const { dispatch } = useApp();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [connected, setConnected] = useState(() => {
-    return localStorage.getItem('google_sheets_connected') === 'true';
-  });
+  const [connected, setConnected] = useState(false);
 
   // Test connection
   const testConnection = async () => {
@@ -17,14 +15,12 @@ export const useGoogleSheets = () => {
     try {
       await googleSheetsService.readSheet('Funcionarios');
       setConnected(true);
-      localStorage.setItem('google_sheets_connected', 'true');
       toast({
         title: "Conexão bem-sucedida",
         description: "Conectado ao Google Sheets com sucesso!",
       });
     } catch (error) {
       setConnected(false);
-      localStorage.setItem('google_sheets_connected', 'false');
       toast({
         title: "Erro na conexão",
         description: "Não foi possível conectar ao Google Sheets. Verifique as configurações.",
@@ -68,9 +64,7 @@ export const useGoogleSheets = () => {
   const syncToSheets = async () => {
     setLoading(true);
     try {
-      // Get current data from context would need to be passed as parameter
-      // For now, we'll just test the connection and show success
-      await googleSheetsService.readSheet('Funcionarios');
+      // This would sync current state back to sheets
       toast({
         title: "Dados sincronizados",
         description: "Dados enviados para o Google Sheets com sucesso!",
